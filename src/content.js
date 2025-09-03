@@ -145,7 +145,7 @@ function getGraphToken() {
 // ========================================
 
 // Lookup package GUID and metadata by display name
-async function lookupPackageGUID(displayName) {
+async function lookupPackageGUID(displayName, context = 'general') {
     const token = getAuthToken();
     if (!token) {
         throw new Error('Authentication token not found');
@@ -175,9 +175,21 @@ async function lookupPackageGUID(displayName) {
         const data = await response.json();
 
         if (!data.value || data.value.length === 0) {
+            let message;
+            switch(context) {
+                case 'approvers':
+                    message = `Cannot display approvers for access package "${displayName}"`;
+                    break;
+                case 'requestors':
+                    message = `Cannot display requestors for access package "${displayName}"`;
+                    break;
+                default:
+                    message = `Cannot find access package "${displayName}"`;
+                    break;
+            }
             return {
                 found: false,
-                message: `Cannot display approvers for access package "${displayName}"`
+                message: message
             };
         }
 
@@ -648,7 +660,7 @@ async function createSimpleRequestorsContent() {
 
     try {
         // Look up the package GUID and metadata
-        const lookupResult = await lookupPackageGUID(packageName);
+        const lookupResult = await lookupPackageGUID(packageName, 'requestors');
         
         if (lookupResult.found) {
             // Get full package details and assignment policies
@@ -747,7 +759,7 @@ async function createSimpleApproversContent() {
 
     try {
         // Look up the package GUID and metadata
-        const lookupResult = await lookupPackageGUID(packageName);
+        const lookupResult = await lookupPackageGUID(packageName, 'approvers');
         
         if (lookupResult.found) {
             // Get full package details and assignment policies
