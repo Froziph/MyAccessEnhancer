@@ -300,3 +300,91 @@
     background: white;
     border: 1px solid #edebe9;
 }
+
+/* Collapsible approver group styles */
+.collapsible-approver-group {
+    border: 1px solid transparent;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.collapsible-approver-group:hover {
+    border-color: #c7c7c7;
+    background-color: #f0f0f0 !important;
+}
+
+.collapsible-approver-group:focus {
+    border-color: #0078d4;
+    outline: none;
+    box-shadow: 0 0 0 1px #0078d4;
+}
+
+.collapsible-content {
+    transition: max-height 0.3s ease-out, opacity 0.2s ease-out;
+    overflow: hidden;
+    opacity: 1;
+}
+
+.collapsible-content[style*="display: none"] {
+    opacity: 0;
+    max-height: 0;
+}
+
+.chevron-icon {
+    transform-origin: center;
+    transition: transform 0.2s ease;
+}
+
+/* Microsoft Fabric style overrides for better integration */
+.cn9hr5dGbnm4MjFC-P9a7 {
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin: 2px 0;
+    background-color: #f8f9fa;
+    border: 1px solid transparent;
+    cursor: pointer;
+    user-select: none;
+}
+
+._15-sLdNz_R9qfRwjgEGjRC {
+    display: flex;
+    align-items: center;
+    min-height: 32px;
+}
+
+._2Wk_euHnEs1IEUewKXsi4D {
+    flex: 1;
+    min-width: 0;
+}
+
+._2Mud-yt14z94cvqhazDnLC {
+    font-weight: 500;
+    line-height: 1.2;
+    margin-bottom: 2px;
+    word-break: break-word;
+}
+
+.hMwWTN0DSGG3aIKsHkP3f {
+    color: #605e5c;
+    font-size: 12px;
+    line-height: 1.2;
+}
+
+._2QB3AMW-pgt94NJm5Qmwy9 {
+    margin-left: 8px;
+    color: #605e5c;
+    font-size: 12px;
+    display: inline-block;
+}
+
+.ms-List-cell {
+    position: relative;
+}
+
+/* Accessibility improvements */
+.collapsible-approver-group[aria-expanded="true"] .chevron-icon {
+    transform: rotate(180deg);
+}
+
+.collapsible-approver-group[aria-expanded="false"] .chevron-icon {
+    transform: rotate(0deg);
+}

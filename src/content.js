@@ -492,30 +492,10 @@ function copyToClipboard(text) {
 // UI CONTENT CREATION
 // ========================================
 
-// Create approvers tab content with GUID lookup
-async function createApproversContent() {
+// Create simple approvers content for Request details tab (non-collapsible)
+async function createSimpleApproversContent() {
     const container = document.createElement('div');
-    container.className = 'approvers-tab-content';
-    
-    // Create progress bar container
-    const progressContainer = document.createElement('div');
-    progressContainer.innerHTML = `
-        <div style="margin-bottom: 20px;">
-            <div style="font-size: 14px; color: #323130; margin-bottom: 8px;">Loading package information...</div>
-            <div style="background: #f3f2f1; border-radius: 8px; height: 8px; overflow: hidden;">
-                <div id="progress-bar" style="background: linear-gradient(90deg, #0078d4, #40e0d0); height: 100%; width: 0%; transition: width 0.3s ease; border-radius: 8px;"></div>
-            </div>
-            <div id="progress-text" style="font-size: 12px; color: #605e5c; margin-top: 4px;">Initializing...</div>
-        </div>
-    `;
-    container.appendChild(progressContainer);
-    
-    const updateProgress = (percentage, text) => {
-        const progressBar = document.getElementById('progress-bar');
-        const progressText = document.getElementById('progress-text');
-        if (progressBar) progressBar.style.width = percentage + '%';
-        if (progressText) progressText.textContent = text;
-    };
+    container.className = 'simple-approvers-content';
 
     const packageName = getCurrentPackageName();
     if (!packageName) {
@@ -528,100 +508,25 @@ async function createApproversContent() {
         container.innerHTML = `
             <div class="error-message">
                 <strong>Authentication token not found</strong><br>
-                Please try:<br>
-                1. Refresh the page<br>
-                2. Sign out and sign back in<br>
-                3. Run <code>window.debugTokens()</code> in console for details
+                Please try refreshing the page or signing out and back in.
             </div>`;
         return container;
     }
 
     try {
-        updateProgress(10, 'Looking up package GUID...');
         // Look up the package GUID and metadata
         const lookupResult = await lookupPackageGUID(packageName);
         
-        updateProgress(30, 'Found package, fetching details...');
-        container.removeChild(progressContainer);
-
         if (lookupResult.found) {
-            // Restore progress bar for remaining calls
-            container.appendChild(progressContainer);
-            updateProgress(40, 'Fetching package metadata...');
-            
             // Get full package details and assignment policies
             const packageDetails = await getPackageDetails(lookupResult.package.id);
             const pkg = packageDetails || lookupResult.package;
-            
-            updateProgress(60, 'Loading assignment policies...');
             const assignmentPolicies = await getAssignmentPolicies(pkg.id);
             
-            updateProgress(70, 'Processing approval workflows...');
-            
-            // Collect all group IDs from approval stages
-            const groupIds = new Set();
-            for (const policy of assignmentPolicies) {
-                const approvalSettings = policy.approvalSettings || policy.requestApprovalSettings;
-                let stages = [];
-                
-                if (approvalSettings?.stages) {
-                    stages = approvalSettings.stages;
-                } else if (approvalSettings?.approvalStages) {
-                    stages = approvalSettings.approvalStages;
-                }
-                
-                for (const stage of stages) {
-                    if (stage.primaryApprovers) {
-                        stage.primaryApprovers.forEach(approver => {
-                            const groupId = approver.groupId || approver.id || approver.objectId;
-                            if (groupId) groupIds.add(groupId);
-                        });
-                    }
-                    if (stage.escalationApprovers) {
-                        stage.escalationApprovers.forEach(approver => {
-                            const groupId = approver.groupId || approver.id || approver.objectId;
-                            if (groupId) groupIds.add(groupId);
-                        });
-                    }
-                }
-            }
-            
-            updateProgress(80, `Loading group members (${groupIds.size} groups)...`);
-            
-            // Fetch all group members
-            const groupMembersCache = new Map();
-            const groupArray = Array.from(groupIds);
-            
-            for (let i = 0; i < groupArray.length; i++) {
-                const groupId = groupArray[i];
-                const progress = 80 + (i + 1) * (15 / groupArray.length);
-                updateProgress(progress, `Loading members for group ${i + 1}/${groupArray.length}...`);
-                
-                try {
-                    const memberData = await getGroupMembers(groupId);
-                    groupMembersCache.set(groupId, memberData);
-                } catch (error) {
-                    console.warn(`Failed to load members for group ${groupId}:`, error);
-                    groupMembersCache.set(groupId, { error: error.message, members: [] });
-                }
-            }
-            
-            updateProgress(95, 'Finalizing display...');
-            
-            // Remove progress bar after all API calls
-            container.removeChild(progressContainer);
-
-
-            // Add simplified approvers section
-            const approversSection = document.createElement('div');
-            approversSection.style.marginTop = '20px';
-            
             if (assignmentPolicies && assignmentPolicies.length > 0) {
-                let approversHtml = '<h4 style="margin: 0 0 16px 0; color: #323130;">👥 Approvers</h4>';
-                
+                // Collect all approver groups from all policies and stages
                 const allApproverGroups = new Set();
                 
-                // Collect all approver groups from all policies and stages
                 for (const policy of assignmentPolicies) {
                     const approvalSettings = policy.approvalSettings || policy.requestApprovalSettings;
                     let stages = [];
@@ -656,81 +561,248 @@ async function createApproversContent() {
                     }
                 }
                 
-                // Display each unique approver group
+                // Display each unique approver group with all members shown by default
                 const uniqueGroups = Array.from(allApproverGroups).map(g => JSON.parse(g));
+                let approversHtml = '';
                 
-                for (const group of uniqueGroups) {
-                    const memberData = groupMembersCache.get(group.groupId);
-                    
-                    approversHtml += `
-                        <div style="margin-bottom: 24px;">
-                            <div style="font-size: 15px; color: #0078d4; font-weight: 500; margin-bottom: 12px; padding: 8px 12px; background: #f8f9fa; border-left: 3px solid #0078d4; border-radius: 4px;">${group.displayName}</div>
-                    `;
-                    
-                    if (memberData && !memberData.error && memberData.members.length > 0) {
-                        approversHtml += createMemberGrid(memberData.members);
-                    } else if (memberData && memberData.error) {
-                        if (memberData.error.includes('Authentication failed')) {
+                if (uniqueGroups.length > 0) {
+                    for (let i = 0; i < uniqueGroups.length; i++) {
+                        const group = uniqueGroups[i];
+                        
+                        try {
+                            const memberData = await getGroupMembers(group.groupId);
+                            
                             approversHtml += `
-                                <div style="padding: 12px; background: #fff4ce; border: 1px solid #ffb900; border-radius: 6px; margin-top: 8px;">
-                                    <div style="font-size: 12px; color: #8a6914; margin-bottom: 4px;"><strong>⚠️ Graph API Access Required</strong></div>
-                                    <div style="font-size: 11px; color: #8a6914; line-height: 1.4;">
-                                        To see group members, Microsoft Graph API access is needed.<br>
-                                        <strong>Workaround:</strong> Run this command in a separate terminal:<br>
-                                        <code style="background: #f3f2f1; padding: 2px 4px; border-radius: 2px; font-family: monospace;">az rest --method GET --url "https://graph.microsoft.com/v1.0/groups/${group.groupId}/members"</code>
+                                <div class="simple-approver-group" style="margin-bottom: 24px;">
+                                    <div style="font-size: 15px; color: #0078d4; font-weight: 500; margin-bottom: 12px; padding: 8px 12px; background: #f8f9fa; border-left: 3px solid #0078d4; border-radius: 4px;">${group.displayName}</div>
+                            `;
+                            
+                            // Show all members by default
+                            if (memberData && !memberData.error && memberData.members.length > 0) {
+                                approversHtml += createMemberGrid(memberData.members);
+                            } else if (memberData && memberData.error) {
+                                if (memberData.error.includes('Authentication failed')) {
+                                    approversHtml += `
+                                        <div style="padding: 12px; background: #fff4ce; border: 1px solid #ffb900; border-radius: 6px; margin-top: 8px;">
+                                            <div style="font-size: 12px; color: #8a6914; margin-bottom: 4px;"><strong>⚠️ Graph API Access Required</strong></div>
+                                            <div style="font-size: 11px; color: #8a6914; line-height: 1.4;">
+                                                To see group members, Microsoft Graph API access is needed.<br>
+                                                <strong>Workaround:</strong> Run this command in a separate terminal:<br>
+                                                <code style="background: #f3f2f1; padding: 2px 4px; border-radius: 2px; font-family: monospace;">az rest --method GET --url "https://graph.microsoft.com/v1.0/groups/${group.groupId}/members"</code>
+                                            </div>
+                                        </div>
+                                    `;
+                                } else {
+                                    approversHtml += `
+                                        <div style="margin-top: 8px; font-size: 12px; color: #a80000; font-style: italic;">
+                                            ⚠️ Could not load group members: ${memberData.error}
+                                        </div>
+                                    `;
+                                }
+                            } else if (memberData && memberData.members.length === 0) {
+                                approversHtml += `
+                                    <div style="margin-top: 8px; font-size: 12px; color: #605e5c; font-style: italic;">
+                                        No members found in this group
+                                    </div>
+                                `;
+                            } else {
+                                approversHtml += `
+                                    <div style="margin-top: 8px; font-size: 12px; color: #8a6914; font-style: italic;">
+                                        Loading group members...
+                                    </div>
+                                `;
+                            }
+                            
+                            approversHtml += '</div>';
+                            
+                        } catch (error) {
+                            approversHtml += `
+                                <div class="simple-approver-group" style="margin-bottom: 24px;">
+                                    <div style="font-size: 15px; color: #0078d4; font-weight: 500; margin-bottom: 12px; padding: 8px 12px; background: #f8f9fa; border-left: 3px solid #0078d4; border-radius: 4px;">${group.displayName}</div>
+                                    <div style="margin-top: 8px; font-size: 12px; color: #a80000; font-style: italic;">
+                                        ⚠️ Could not load group members: ${error.message}
                                     </div>
                                 </div>
                             `;
-                        } else {
-                            approversHtml += `
-                                <div style="margin-top: 8px; font-size: 12px; color: #a80000; font-style: italic;">
-                                    ⚠️ Could not load group members: ${memberData.error}
-                                </div>
-                            `;
                         }
-                    } else if (memberData && memberData.members.length === 0) {
-                        approversHtml += `
-                            <div style="margin-top: 8px; font-size: 12px; color: #605e5c; font-style: italic;">
-                                No members found in this group
-                            </div>
-                        `;
-                    } else {
-                        approversHtml += `
-                            <div style="margin-top: 8px; font-size: 12px; color: #8a6914; font-style: italic;">
-                                Loading group members...
-                            </div>
-                        `;
                     }
-                    
-                    approversHtml += '</div>';
-                }
-                
-                if (uniqueGroups.length === 0) {
-                    approversHtml += `
-                        <div style="font-style: italic; color: #605e5c; margin-top: 16px;">
-                            No approver groups configured for this package.
+                } else {
+                    approversHtml = `
+                        <div style="padding: 12px; background: #fff4ce; border: 1px solid #ffb900; border-radius: 6px;">
+                            ⚠️ No approver groups configured for this package.
                         </div>
                     `;
                 }
                 
-                approversSection.innerHTML = approversHtml;
+                container.innerHTML = approversHtml;
             } else {
-                approversSection.innerHTML = `
-                    <h4 style="margin: 0 0 16px 0; color: #323130;">👥 Approvers</h4>
+                container.innerHTML = `
                     <div style="padding: 12px; background: #fff4ce; border: 1px solid #ffb900; border-radius: 6px;">
                         ⚠️ No assignment policies found for this package.
                     </div>
                 `;
             }
-            
-            container.appendChild(approversSection);
-            
-            // Add requestor groups section
-            const requestorSection = document.createElement('div');
-            requestorSection.style.marginTop = '20px';
+        } else {
+            container.innerHTML = `<div class="warning-message">⚠️ ${lookupResult.message}</div>`;
+        }
+
+    } catch (error) {
+        container.innerHTML = `
+            <div class="error-message">
+                <strong>Error looking up package information:</strong><br>
+                ${error.message}
+            </div>`;
+    }
+
+    return container;
+}
+
+// Create simple approvers content for Resources tab and Access panels (non-collapsible)
+async function createApproversContent() {
+    const container = document.createElement('div');
+    container.className = 'approvers-tab-content';
+
+    const packageName = getCurrentPackageName();
+    if (!packageName) {
+        container.innerHTML = '<div class="error-message">Could not determine package name from modal</div>';
+        return container;
+    }
+
+    const token = getAuthToken();
+    if (!token) {
+        container.innerHTML = `
+            <div class="error-message">
+                <strong>Authentication token not found</strong><br>
+                Please try refreshing the page or signing out and back in.
+            </div>`;
+        return container;
+    }
+
+    try {
+        // Look up the package GUID and metadata
+        const lookupResult = await lookupPackageGUID(packageName);
+        
+        if (lookupResult.found) {
+            // Get full package details and assignment policies
+            const packageDetails = await getPackageDetails(lookupResult.package.id);
+            const pkg = packageDetails || lookupResult.package;
+            const assignmentPolicies = await getAssignmentPolicies(pkg.id);
             
             if (assignmentPolicies && assignmentPolicies.length > 0) {
-                let requestorHtml = '<h4 style="margin: 0 0 16px 0; color: #323130;">👤 Who Can Request</h4>';
+                // Collect all approver groups from all policies and stages
+                const allApproverGroups = new Set();
+                
+                for (const policy of assignmentPolicies) {
+                    const approvalSettings = policy.approvalSettings || policy.requestApprovalSettings;
+                    let stages = [];
+                    
+                    if (approvalSettings?.stages) {
+                        stages = approvalSettings.stages;
+                    } else if (approvalSettings?.approvalStages) {
+                        stages = approvalSettings.approvalStages;
+                    }
+                    
+                    if (stages && stages.length > 0) {
+                        for (const stage of stages) {
+                            if (stage.primaryApprovers) {
+                                stage.primaryApprovers.forEach(approver => {
+                                    const displayName = approver.displayName || approver.description || 'Unknown Group';
+                                    const groupId = approver.groupId || approver.id || approver.objectId;
+                                    if (groupId) {
+                                        allApproverGroups.add(JSON.stringify({ displayName, groupId }));
+                                    }
+                                });
+                            }
+                            if (stage.escalationApprovers) {
+                                stage.escalationApprovers.forEach(approver => {
+                                    const displayName = approver.displayName || approver.description || 'Unknown Group';
+                                    const groupId = approver.groupId || approver.id || approver.objectId;
+                                    if (groupId) {
+                                        allApproverGroups.add(JSON.stringify({ displayName, groupId }));
+                                    }
+                                });
+                            }
+                        }
+                    }
+                }
+                
+                // Create simple approvers section
+                let approversHtml = '<h4 style="margin: 0 0 16px 0; color: #323130;">👥 Approvers</h4>';
+                
+                // Display each unique approver group with all members shown by default
+                const uniqueGroups = Array.from(allApproverGroups).map(g => JSON.parse(g));
+                
+                if (uniqueGroups.length > 0) {
+                    for (let i = 0; i < uniqueGroups.length; i++) {
+                        const group = uniqueGroups[i];
+                        
+                        try {
+                            const memberData = await getGroupMembers(group.groupId);
+                            
+                            approversHtml += `
+                                <div class="simple-approver-group" style="margin-bottom: 24px;">
+                                    <div style="font-size: 15px; color: #0078d4; font-weight: 500; margin-bottom: 12px; padding: 8px 12px; background: #f8f9fa; border-left: 3px solid #0078d4; border-radius: 4px;">${group.displayName}</div>
+                            `;
+                            
+                            // Show all members by default
+                            if (memberData && !memberData.error && memberData.members.length > 0) {
+                                approversHtml += createMemberGrid(memberData.members);
+                            } else if (memberData && memberData.error) {
+                                if (memberData.error.includes('Authentication failed')) {
+                                    approversHtml += `
+                                        <div style="padding: 12px; background: #fff4ce; border: 1px solid #ffb900; border-radius: 6px; margin-top: 8px;">
+                                            <div style="font-size: 12px; color: #8a6914; margin-bottom: 4px;"><strong>⚠️ Graph API Access Required</strong></div>
+                                            <div style="font-size: 11px; color: #8a6914; line-height: 1.4;">
+                                                To see group members, Microsoft Graph API access is needed.<br>
+                                                <strong>Workaround:</strong> Run this command in a separate terminal:<br>
+                                                <code style="background: #f3f2f1; padding: 2px 4px; border-radius: 2px; font-family: monospace;">az rest --method GET --url "https://graph.microsoft.com/v1.0/groups/${group.groupId}/members"</code>
+                                            </div>
+                                        </div>
+                                    `;
+                                } else {
+                                    approversHtml += `
+                                        <div style="margin-top: 8px; font-size: 12px; color: #a80000; font-style: italic;">
+                                            ⚠️ Could not load group members: ${memberData.error}
+                                        </div>
+                                    `;
+                                }
+                            } else if (memberData && memberData.members.length === 0) {
+                                approversHtml += `
+                                    <div style="margin-top: 8px; font-size: 12px; color: #605e5c; font-style: italic;">
+                                        No members found in this group
+                                    </div>
+                                `;
+                            } else {
+                                approversHtml += `
+                                    <div style="margin-top: 8px; font-size: 12px; color: #8a6914; font-style: italic;">
+                                        Loading group members...
+                                    </div>
+                                `;
+                            }
+                            
+                            approversHtml += '</div>';
+                            
+                        } catch (error) {
+                            approversHtml += `
+                                <div class="simple-approver-group" style="margin-bottom: 24px;">
+                                    <div style="font-size: 15px; color: #0078d4; font-weight: 500; margin-bottom: 12px; padding: 8px 12px; background: #f8f9fa; border-left: 3px solid #0078d4; border-radius: 4px;">${group.displayName}</div>
+                                    <div style="margin-top: 8px; font-size: 12px; color: #a80000; font-style: italic;">
+                                        ⚠️ Could not load group members: ${error.message}
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    }
+                } else {
+                    approversHtml += `
+                        <div style="padding: 12px; background: #fff4ce; border: 1px solid #ffb900; border-radius: 6px;">
+                            ⚠️ No approver groups configured for this package.
+                        </div>
+                    `;
+                }
+                
+                // Add requestor groups section
+                approversHtml += '<h4 style="margin: 20px 0 16px 0; color: #323130;">👤 Who Can Request</h4>';
                 
                 const allRequestorGroups = new Set();
                 
@@ -760,44 +832,39 @@ async function createApproversContent() {
                 
                 if (uniqueRequestorGroups.length > 0) {
                     for (const groupName of uniqueRequestorGroups) {
-                        requestorHtml += `
+                        approversHtml += `
                             <div style="margin-bottom: 12px;">
                                 <div style="font-size: 15px; color: #107c10; font-weight: 500; margin-bottom: 4px; padding: 8px 12px; background: #f8f9fa; border-left: 3px solid #107c10; border-radius: 4px;">${groupName}</div>
                             </div>
                         `;
                     }
                 } else {
-                    requestorHtml += `
-                        <div style="font-style: italic; color: #605e5c;">
-                            No specific requestor groups configured - may be open to all users.
+                    approversHtml += `
+                        <div style="padding: 12px; background: #e6f7ff; border: 1px solid #0078d4; border-radius: 6px;">
+                            <strong>ℹ️ Open Access</strong><br>
+                            No specific requestor groups configured - this package may be open to all users.
                         </div>
                     `;
                 }
                 
-                requestorSection.innerHTML = requestorHtml;
+                container.innerHTML = approversHtml;
             } else {
-                requestorSection.innerHTML = `
-                    <h4 style="margin: 0 0 16px 0; color: #323130;">👤 Who Can Request</h4>
-                    <div style="font-style: italic; color: #605e5c;">
-                        No assignment policies found.
+                container.innerHTML = `
+                    <h4 style="margin: 0 0 16px 0; color: #323130;">👥 Approvers</h4>
+                    <div style="padding: 12px; background: #fff4ce; border: 1px solid #ffb900; border-radius: 6px;">
+                        ⚠️ No assignment policies found for this package.
                     </div>
                 `;
             }
-            
-            container.appendChild(requestorSection);
-
         } else {
-            // Show not found message but no separate box
-            container.innerHTML += `<div class="warning-message">⚠️ ${lookupResult.message}</div>`;
+            container.innerHTML = `<div class="warning-message">⚠️ ${lookupResult.message}</div>`;
         }
 
     } catch (error) {
         container.innerHTML = `
             <div class="error-message">
-                <strong>Error looking up package GUID:</strong><br>
-                ${error.message}<br><br>
-                <strong>Package Name:</strong> ${packageName}<br>
-                <strong>Token Available:</strong> ${token ? 'Yes' : 'No'}
+                <strong>Error looking up package information:</strong><br>
+                ${error.message}
             </div>`;
     }
 
@@ -808,194 +875,232 @@ async function createApproversContent() {
 // TAB MANAGEMENT
 // ========================================
 
-// Add Approvers tab to the modal
-function addApproversTab() {
-    // Look specifically for the modal's tab list
-    let tabList = null;
-    let modalTabLists = document.querySelectorAll('[role="tablist"]');
+// Add collapsible approvers content to Request details tab
+function addApproversToRequestDetailsTab() {
+    // Look for the Request details tab panel content
+    const tabPanel = document.querySelector('[role="tabpanel"]');
+    if (!tabPanel) return;
     
-    for (let list of modalTabLists) {
-        // Check if this tab list contains the Request details and Resources tabs
-        const tabs = list.querySelectorAll('[role="tab"]');
-        let hasRequestDetails = false;
-        let hasResources = false;
-        
-        for (let tab of tabs) {
-            if (tab.textContent.includes('Request details')) hasRequestDetails = true;
-            if (tab.textContent.includes('Resources')) hasResources = true;
-        }
-        
-        // This is the modal's tab list
-        if (hasRequestDetails && hasResources) {
-            tabList = list;
-            break;
-        }
+    // Check if this is the Request details tab by looking for "Share a link" content
+    const shareSection = tabPanel.querySelector('button[id="share-button-id"]');
+    if (!shareSection) return;
+    
+    // Check if we already added approvers
+    if (tabPanel.querySelector('[data-request-details-approvers-section]')) return;
+    
+    console.log('[MyAccess Enhanced] Request details tab found, attempting to add collapsible approvers...');
+    
+    // Extract package name from current package name
+    const packageName = getCurrentPackageName();
+    if (!packageName) {
+        console.log('[MyAccess Enhanced] Could not extract package name from request details tab');
+        return;
     }
     
-    if (!tabList) return;
+    console.log('[MyAccess Enhanced] Extracted package name for request details:', packageName);
     
-    // Check if we already added the tab
-    if (tabList.querySelector('[data-approvers-tab]')) return;
+    // Store the package name for createApproversContent
+    currentPackageName = packageName;
     
-    // Find existing tabs in the modal
-    const existingTabs = Array.from(tabList.querySelectorAll('[role="tab"]'));
-    const resourcesTab = existingTabs.find(tab => tab.textContent.includes('Resources'));
-    
-    if (!resourcesTab) return;
-    
-    // Clone the Resources tab
-    const approversTab = resourcesTab.cloneNode(true);
-    
-    // Update text content - handle nested elements
-    const textElement = approversTab.querySelector('.ms-Pivot-text') || 
-                      approversTab.querySelector('span');
-    if (textElement) {
-        textElement.textContent = ' Approvers';
-    } else {
-        approversTab.textContent = 'Approvers';
+    // Find the container with the share button section
+    const shareContainer = shareSection.closest('div');
+    if (!shareContainer) {
+        console.log('[MyAccess Enhanced] Could not find share container');
+        return;
     }
     
-    approversTab.setAttribute('data-approvers-tab', 'true');
+    // Create collapsible approvers section
+    const approversSection = document.createElement('div');
+    approversSection.setAttribute('data-request-details-approvers-section', 'true');
+    approversSection.style.cssText = `
+        margin-top: 16px;
+        border-top: 1px solid #edebe9;
+        padding-top: 12px;
+    `;
     
-    // Reset selection state
-    if (approversTab.hasAttribute('aria-selected')) {
-        approversTab.setAttribute('aria-selected', 'false');
-    }
+    // Create collapsible header HTML
+    const approversHtml = `
+        <div class="ms-List-cell collapsible-section" data-list-index="0" data-section="request-details-approvers" 
+             role="button" data-is-focusable="true" tabindex="0"
+             style="cursor: pointer; padding: 12px; background: #f8f9fa; border: 1px solid #edebe9; border-radius: 4px; margin-bottom: 8px;">
+            <div class="_2Wk_euHnEs1IEUewKXsi4D">
+                <div class="_2Mud-yt14z94cvqhazDnLC" style="font-size: 16px; color: #323130; font-weight: 600;">Package Approvers</div>
+                <div class="hMwWTN0DSGG3aIKsHkP3f" style="font-size: 11px; color: #605e5c;">Show/hide details</div>
+            </div>
+            <div aria-live="assertive" style="position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0px; border: 0px; overflow: hidden; clip: rect(0px, 0px, 0px, 0px);">Collapsed</div>
+            <div class="collapsible-content" id="request-details-approvers-content" style="display: none; padding: 12px 0 0 0; margin-top: 12px;">
+                <div class="approver-content-loading" style="padding: 20px; text-align: center; color: #605e5c;">
+                    Click to load approver details...
+                </div>
+            </div>
+        </div>
+    `;
     
-    // Remove any active/selected classes
-    const classesToRemove = ['is-selected', 'selected', 'active', 'is-active'];
-    classesToRemove.forEach(cls => {
-        approversTab.classList.remove(cls);
-        const nested = approversTab.querySelectorAll('*');
-        nested.forEach(el => el.classList.remove(cls));
-    });
+    approversSection.innerHTML = approversHtml;
     
-    // Add to tab list
-    tabList.appendChild(approversTab);
+    // Insert before the share container
+    shareContainer.insertAdjacentElement('beforebegin', approversSection);
     
-    // Add click handler
-    approversTab.addEventListener('click', async function(e) {
-        e.preventDefault();
-        e.stopPropagation();
+    // Add click handler for collapsible approvers section
+    setTimeout(() => {
+        const sectionHeader = approversSection.querySelector('.collapsible-section[data-section="request-details-approvers"]');
+        let approversLoaded = false;
         
-        // Only set aria-selected to false - don't touch any classes or styling
-        const allTabs = tabList.querySelectorAll('[role="tab"]');
-        allTabs.forEach(tab => {
-            if (tab !== approversTab) {
-                tab.setAttribute('aria-selected', 'false');
-                // Don't modify any classes or styling - be completely conservative
+        sectionHeader.addEventListener('click', async function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const content = document.getElementById('request-details-approvers-content');
+            const ariaLive = this.querySelector('[aria-live="assertive"]');
+            
+            if (content) {
+                const isExpanded = content.style.display !== 'none';
+                
+                if (isExpanded) {
+                    // Collapse
+                    content.style.display = 'none';
+                    ariaLive.textContent = 'Collapsed';
+                } else {
+                    // Expand
+                    content.style.display = 'block';
+                    ariaLive.textContent = 'Expanded';
+                    
+                    // Load approvers data only when expanding for the first time
+                    if (!approversLoaded) {
+                        approversLoaded = true;
+                        
+                        // Show loading message
+                        content.innerHTML = `
+                            <div style="padding: 20px; text-align: center;">
+                                <div style="font-size: 14px; color: #323130; margin-bottom: 8px;">Loading Package Approvers...</div>
+                                <div style="background: #f3f2f1; border-radius: 8px; height: 4px; width: 200px; margin: 0 auto; overflow: hidden;">
+                                    <div style="background: linear-gradient(90deg, #0078d4, #40e0d0); height: 100%; width: 100%; animation: pulse 1.5s ease-in-out infinite;"></div>
+                                </div>
+                            </div>
+                        `;
+                        
+                        try {
+                            // Create a simple approvers content for Request details tab
+                            const approverContent = await createSimpleApproversContent();
+                            
+                            // Update content with loaded data
+                            content.innerHTML = '';
+                            content.appendChild(approverContent);
+                            
+                        } catch (error) {
+                            content.innerHTML = `
+                                <div style="padding: 12px; background: #fde7e9; border: 1px solid #a80000; border-radius: 6px;">
+                                    <strong>Error loading approvers:</strong><br>
+                                    ${error.message}
+                                </div>
+                            `;
+                        }
+                    }
+                }
             }
         });
         
-        // Find the tab panel first
-        let tabPanel = document.querySelector('[role="tabpanel"]');
-        
-        if (!tabPanel) {
-            // Try to find content area another way
-            const possiblePanels = document.querySelectorAll('div[class*="content"], div[class*="panel"], div[class*="body"]');
-            for (let panel of possiblePanels) {
-                if (panel.textContent.includes('Share a link') ||
-                    panel.querySelector('button[id="share-button-id"]')) {
-                    tabPanel = panel.parentElement;
-                    console.log('Found panel by content search');
-                    break;
-                }
+        // Add keyboard support for main section
+        sectionHeader.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                this.click();
             }
-        }
-
-        // Select the Approvers tab with proper styling AND load content (use same delay as existing tabs)
-        setTimeout(async () => {
-            approversTab.setAttribute('aria-selected', 'true');
-            approversTab.classList.remove('link-321');
-            approversTab.classList.add('is-selected', 'linkIsSelected-315', 'ms-Pivot-link--selected');
-            
-            // Add underline styling to match native tabs
-            const textElement = approversTab.querySelector('.ms-Pivot-text') || approversTab.querySelector('span') || approversTab;
-            if (textElement) {
-                textElement.style.borderBottom = '2px solid #0078d4';
-                textElement.style.borderBottomLeftRadius = '0';
-                textElement.style.borderBottomRightRadius = '0';
-            }
-            
-            // Show loading message immediately
-            if (tabPanel) {
-                tabPanel.setAttribute('aria-labelledby', approversTab.id || 'approvers-tab');
-                tabPanel.innerHTML = createLoadingMessage();
-                
-                // Load actual content
-                const content = await createApproversContent();
-                
-                // Double-check we're still on the approvers tab after async operation
-                if (approversTab.getAttribute('aria-selected') === 'true') {
-                    tabPanel.innerHTML = '';
-                    tabPanel.appendChild(content);
-                }
-                // If not, the content is discarded (user switched tabs)
-            } else {
-                // Show loading message for non-panel case
-                const loadingDiv = document.createElement('div');
-                loadingDiv.style.cssText = 'margin-top: 20px;';
-                loadingDiv.innerHTML = createLoadingMessage();
-                tabList.parentElement.appendChild(loadingDiv);
-                
-                // Load actual content
-                const content = await createApproversContent();
-                
-                // Double-check we're still on the approvers tab after async operation
-                if (approversTab.getAttribute('aria-selected') === 'true') {
-                    loadingDiv.remove();
-                    content.style.marginTop = '20px';
-                    tabList.parentElement.appendChild(content);
-                }
-                // If not, the content is discarded (user switched tabs)
-            }
-        }, 10);
-    });
-    
-    // Add lightweight handlers to existing tabs that only manage approvers tab cleanup
-    existingTabs.forEach(tab => {
-        // Store original click handler before adding our own
-        const originalClickHandlers = [];
-        
-        // Add our handler with capture=true to run before native handlers
-        tab.addEventListener('click', function(e) {
-            // Only clear the approvers tab selection, let native tabs handle themselves
-            if (approversTab && approversTab.getAttribute('aria-selected') === 'true') {
-                approversTab.setAttribute('aria-selected', 'false');
-                
-                // Remove approvers tab selection styling - be more conservative
-                const approversClassesToRemove = [];
-                approversTab.classList.forEach(className => {
-                    if (className.startsWith('linkIsSelected') || className === 'is-selected' || className === 'ms-Pivot-link--selected') {
-                        approversClassesToRemove.push(className);
-                    }
-                });
-                approversClassesToRemove.forEach(className => approversTab.classList.remove(className));
-                
-                // Remove underline from approvers tab
-                const approversTextElement = approversTab.querySelector('.ms-Pivot-text') || approversTab.querySelector('span') || approversTab;
-                if (approversTextElement) {
-                    approversTextElement.style.borderBottom = '';
-                    approversTextElement.style.borderBottomLeftRadius = '';
-                    approversTextElement.style.borderBottomRightRadius = '';
-                }
-            }
-            
-            // Let the native click handler proceed normally for the clicked tab
-            // DON'T prevent default or stop propagation - let Microsoft handle the tab switch
-        }, true); // Use capture=true to ensure we run before native handlers
-    });
-    
-    // Try to trigger a click on request details to ensure UI is ready
-    const requestTab = existingTabs.find(tab => tab.textContent.includes('Request details'));
-    if (requestTab) {
-        setTimeout(() => {
-            requestTab.click();
-        }, 200);
-    }
+        });
+    }, 100);
 }
 
-// Add approver information to access request panel
+// Add approvers content to Resources tab (keeping for backwards compatibility)
+function addApproversToResourcesTab() {
+    // Look for the Resources tab panel content
+    const tabPanel = document.querySelector('[role="tabpanel"]');
+    if (!tabPanel) return;
+    
+    // Check if this is the Resources tab by looking for "View by:" dropdown
+    const viewByLabel = tabPanel.querySelector('label[id*="Dropdown"][id$="-label"]');
+    if (!viewByLabel || !viewByLabel.textContent.includes('View by:')) return;
+    
+    // Check if we already added approvers
+    if (tabPanel.querySelector('[data-resources-approvers-section]')) return;
+    
+    console.log('[MyAccess Enhanced] Resources tab found, attempting to add approvers...');
+    
+    // Extract package name from current package name
+    const packageName = getCurrentPackageName();
+    if (!packageName) {
+        console.log('[MyAccess Enhanced] Could not extract package name from resources tab');
+        return;
+    }
+    
+    console.log('[MyAccess Enhanced] Extracted package name for resources:', packageName);
+    
+    // Store the package name for createApproversContent
+    currentPackageName = packageName;
+    
+    // Find the container after the dropdown and resources list
+    const resourcesContainer = tabPanel.querySelector('.ms-FocusZone');
+    if (!resourcesContainer) {
+        console.log('[MyAccess Enhanced] Could not find resources container');
+        return;
+    }
+    
+    // Create approvers section with minimal spacing
+    const approversSection = document.createElement('div');
+    approversSection.setAttribute('data-resources-approvers-section', 'true');
+    approversSection.style.cssText = `
+        margin-top: 0px;
+        border-top: 1px solid #edebe9;
+        padding-top: 4px;
+    `;
+    
+    // Add header
+    const approversHeader = document.createElement('div');
+    approversHeader.style.cssText = `
+        font-size: 16px;
+        font-weight: 600;
+        color: #323130;
+        margin-bottom: 8px;
+        margin-top: 8px;
+    `;
+    approversHeader.textContent = '👥 Package Approvers';
+    
+    // Add loading message
+    const loadingDiv = document.createElement('div');
+    loadingDiv.innerHTML = createLoadingMessage('Loading Package Approvers...', 'Fetching approver information for this access package');
+    
+    approversSection.appendChild(approversHeader);
+    approversSection.appendChild(loadingDiv);
+    
+    // Insert directly after the resources container within the same parent
+    resourcesContainer.insertAdjacentElement('afterend', approversSection);
+    
+    // Load approver content immediately
+    (async () => {
+        try {
+            const approverContent = await createApproversContent();
+            
+            // Replace loading with actual content
+            approversSection.removeChild(loadingDiv);
+            approversSection.appendChild(approverContent);
+        } catch (error) {
+            // Replace loading with error message
+            const errorDiv = document.createElement('div');
+            errorDiv.innerHTML = `
+                <div style="padding: 20px; text-align: center;">
+                    <div style="font-size: 16px; color: #a80000; margin-bottom: 12px;">⚠️ Error Loading Approvers</div>
+                    <div style="font-size: 14px; color: #605e5c;">${error.message}</div>
+                </div>
+            `;
+            
+            approversSection.removeChild(loadingDiv);
+            approversSection.appendChild(errorDiv);
+        }
+    })();
+}
+
+// Removed approvers tab functionality - keeping only Request details tab integration
+
+// Add collapsible approver information to access request panel
 function addApproversToAccessRequestPanel() {
     // Look for the access request panel
     const accessRequestPanel = document.querySelector('.ms-Panel-content');
@@ -1006,9 +1111,9 @@ function addApproversToAccessRequestPanel() {
     if (!headerElement || !headerElement.textContent.includes('Access request')) return;
     
     // Check if we already added approvers section
-    if (accessRequestPanel.querySelector('[data-approvers-section]')) return;
+    if (accessRequestPanel.querySelector('[data-access-request-approvers-section]')) return;
     
-    console.log('[MyAccess Enhanced] Access request panel found, attempting to add approvers...');
+    console.log('[MyAccess Enhanced] Access request panel found, attempting to add collapsible approvers...');
     
     // Extract package name from "You submitted a request for" text
     let packageName = null;
@@ -1034,55 +1139,108 @@ function addApproversToAccessRequestPanel() {
     
     console.log('[MyAccess Enhanced] Extracted package name:', packageName);
     
-    // Store the package name for createApproversContent
+    // Store the package name for createSimpleApproversContent
     currentPackageName = packageName;
     
-    // Create approvers section using same structure as Request history
+    // Create collapsible approvers section
     const approversSection = document.createElement('div');
-    approversSection.setAttribute('data-approvers-section', 'true');
+    approversSection.setAttribute('data-access-request-approvers-section', 'true');
+    approversSection.style.cssText = `
+        margin-top: 16px;
+        border-top: 1px solid #edebe9;
+        padding-top: 12px;
+    `;
     
-    // Create header using same classes as "Request history"
-    const approversHeader = document.createElement('div');
-    approversHeader.className = 'css-439 _2mxGreAISb4kDRuCL9U1yD';
-    approversHeader.textContent = 'Package Approvers';
+    // Create collapsible header HTML
+    const approversHtml = `
+        <div class="ms-List-cell collapsible-section" data-list-index="0" data-section="access-request-approvers" 
+             role="button" data-is-focusable="true" tabindex="0"
+             style="cursor: pointer; padding: 12px; background: #f8f9fa; border: 1px solid #edebe9; border-radius: 4px; margin-bottom: 8px;">
+            <div class="_2Wk_euHnEs1IEUewKXsi4D">
+                <div class="_2Mud-yt14z94cvqhazDnLC" style="font-size: 16px; color: #323130; font-weight: 600;">Package Approvers</div>
+                <div class="hMwWTN0DSGG3aIKsHkP3f" style="font-size: 11px; color: #605e5c;">Show/hide details</div>
+            </div>
+            <div aria-live="assertive" style="position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0px; border: 0px; overflow: hidden; clip: rect(0px, 0px, 0px, 0px);">Collapsed</div>
+            <div class="collapsible-content" id="access-request-approvers-content" style="display: none; padding: 12px 0 0 0; margin-top: 12px;">
+                <div class="approver-content-loading" style="padding: 20px; text-align: center; color: #605e5c;">
+                    Click to load approver details...
+                </div>
+            </div>
+        </div>
+    `;
     
-    // Create content container using same classes as request history container
-    const approversContent = document.createElement('div');
-    approversContent.className = '_8yCF-P7Hjex-9cWOFzoBQ _3wf7dgdgSzVTJ2joLPo1i';
-    
-    // Add loading message using consistent loading UI
-    const loadingItem = document.createElement('div');
-    loadingItem.innerHTML = createLoadingMessage('Loading Package Approvers...', 'Fetching approver details for this access request');
-    
-    approversContent.appendChild(loadingItem);
-    
-    // Assemble the section
-    approversSection.appendChild(approversHeader);
-    approversSection.appendChild(approversContent);
+    approversSection.innerHTML = approversHtml;
     
     // Append section to panel
     accessRequestPanel.appendChild(approversSection);
     
-    // Load approver content immediately
-    (async () => {
-        try {
-            const approverContent = await createApproversContent();
+    // Add click handler for collapsible approvers section
+    setTimeout(() => {
+        const sectionHeader = approversSection.querySelector('.collapsible-section[data-section="access-request-approvers"]');
+        let approversLoaded = false;
+        
+        sectionHeader.addEventListener('click', async function(e) {
+            e.preventDefault();
+            e.stopPropagation();
             
-            // Clear the loading content and add the actual approvers content
-            approversContent.innerHTML = '';
-            approversContent.appendChild(approverContent);
-        } catch (error) {
-            // Replace loading with error message using consistent styling
-            const errorMessage = `
-                <div style="padding: 20px; text-align: center;">
-                    <div style="font-size: 16px; color: #a80000; margin-bottom: 12px;">⚠️ Error Loading Approvers</div>
-                    <div style="font-size: 14px; color: #605e5c;">${error.message}</div>
-                </div>
-            `;
+            const content = document.getElementById('access-request-approvers-content');
+            const ariaLive = this.querySelector('[aria-live="assertive"]');
             
-            approversContent.innerHTML = errorMessage;
-        }
-    })();
+            if (content) {
+                const isExpanded = content.style.display !== 'none';
+                
+                if (isExpanded) {
+                    // Collapse
+                    content.style.display = 'none';
+                    ariaLive.textContent = 'Collapsed';
+                } else {
+                    // Expand
+                    content.style.display = 'block';
+                    ariaLive.textContent = 'Expanded';
+                    
+                    // Load approvers data only when expanding for the first time
+                    if (!approversLoaded) {
+                        approversLoaded = true;
+                        
+                        // Show loading message
+                        content.innerHTML = `
+                            <div style="padding: 20px; text-align: center;">
+                                <div style="font-size: 14px; color: #323130; margin-bottom: 8px;">Loading Package Approvers...</div>
+                                <div style="background: #f3f2f1; border-radius: 8px; height: 4px; width: 200px; margin: 0 auto; overflow: hidden;">
+                                    <div style="background: linear-gradient(90deg, #0078d4, #40e0d0); height: 100%; width: 100%; animation: pulse 1.5s ease-in-out infinite;"></div>
+                                </div>
+                            </div>
+                        `;
+                        
+                        try {
+                            // Create a simple approvers content for Access request panel
+                            const approverContent = await createSimpleApproversContent();
+                            
+                            // Update content with loaded data
+                            content.innerHTML = '';
+                            content.appendChild(approverContent);
+                            
+                        } catch (error) {
+                            content.innerHTML = `
+                                <div style="padding: 12px; background: #fde7e9; border: 1px solid #a80000; border-radius: 6px;">
+                                    <strong>Error loading approvers:</strong><br>
+                                    ${error.message}
+                                </div>
+                            `;
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Add keyboard support for main section
+        sectionHeader.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                this.click();
+            }
+        });
+    }, 100);
 }
 
 
@@ -1105,9 +1263,28 @@ function watchForModal() {
                                  modal.textContent.includes('Resources');
             
             if (hasCorrectTabs) {
-                setTimeout(addApproversTab, 50);
-                setTimeout(addApproversTab, 200);
-                setTimeout(addApproversTab, 500);
+                // Always attempt to add approvers to Request details tab when modal is detected
+                setTimeout(addApproversToRequestDetailsTab, 100);
+                setTimeout(addApproversToRequestDetailsTab, 300);
+                setTimeout(addApproversToRequestDetailsTab, 600);
+                
+                // Also add click handlers to tabs if not already added
+                const tabList = modal.querySelector('[role="tablist"]');
+                if (tabList && !tabList.hasAttribute('data-approvers-listeners-added')) {
+                    tabList.setAttribute('data-approvers-listeners-added', 'true');
+                    
+                    const tabs = tabList.querySelectorAll('[role="tab"]');
+                    tabs.forEach(tab => {
+                        tab.addEventListener('click', function() {
+                            // If this is the Request details tab, add approvers after a delay
+                            if (this.textContent.includes('Request details')) {
+                                setTimeout(addApproversToRequestDetailsTab, 100);
+                                setTimeout(addApproversToRequestDetailsTab, 300);
+                                setTimeout(addApproversToRequestDetailsTab, 600);
+                            }
+                        });
+                    });
+                }
             }
         }
         
@@ -1179,7 +1356,22 @@ function init() {
     }, 3000);
     
     // Debug helpers
-    window.debugApproversTab = () => addApproversTab();
+    window.debugRequestDetailsTab = () => {
+        console.log('=== Debug Request Details Tab ===');
+        const tabPanel = document.querySelector('[role="tabpanel"]');
+        console.log('Tab panel found:', !!tabPanel);
+        
+        const shareSection = tabPanel ? tabPanel.querySelector('button[id="share-button-id"]') : null;
+        console.log('Share button found:', !!shareSection);
+        
+        const shareContainer = shareSection ? shareSection.closest('div') : null;
+        console.log('Share container found:', !!shareContainer);
+        
+        const packageName = getCurrentPackageName();
+        console.log('Package name:', packageName);
+        
+        addApproversToRequestDetailsTab();
+    };
     window.debugAccessRequestPanel = () => {
         console.log('=== Debug Access Request Panel ===');
         const headerElement = document.querySelector('.ms-Panel-headerText');
