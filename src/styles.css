@@ -21,11 +21,16 @@
     50% { background: linear-gradient(90deg, #45b7d1, #ff6b6b, #4ecdc4); }
 }
 
+@keyframes pulse {
+    0% { opacity: 0.6; transform: scaleX(0.8); }
+    50% { opacity: 1; transform: scaleX(1); }
+    100% { opacity: 0.6; transform: scaleX(0.8); }
+}
+
 /* Approvers tab content styles */
 .approvers-tab-content {
     padding: 20px;
-    max-height: 400px;
-    overflow-y: auto;
+    /* Removed max-height and overflow-y to prevent double scrollbars */
 }
 
 .package-info-section {

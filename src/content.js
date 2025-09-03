@@ -339,6 +339,21 @@ async function getGroupMembers(groupId) {
 // UTILITY FUNCTIONS
 // ========================================
 
+// Create consistent loading message
+function createLoadingMessage(title = 'Loading Package Approvers...', subtitle = 'Please wait while we fetch approver information') {
+    return `
+        <div style="padding: 40px; text-align: center;">
+            <div style="font-size: 16px; color: #323130; margin-bottom: 12px;">${title}</div>
+            <div style="font-size: 14px; color: #605e5c;">${subtitle}</div>
+            <div style="margin-top: 16px;">
+                <div style="background: #f3f2f1; border-radius: 8px; height: 4px; width: 200px; margin: 0 auto; overflow: hidden;">
+                    <div style="background: linear-gradient(90deg, #0078d4, #40e0d0); height: 100%; width: 100%; animation: pulse 1.5s ease-in-out infinite;"></div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
 // Generate initials from a name
 function generateInitials(givenName, surname, displayName) {
     if (givenName && surname) {
@@ -863,29 +878,12 @@ function addApproversTab() {
         e.preventDefault();
         e.stopPropagation();
         
-        // Only clear selection from other tabs, don't forcefully style them
-        // Let native tabs manage their own styling
+        // Only set aria-selected to false - don't touch any classes or styling
         const allTabs = tabList.querySelectorAll('[role="tab"]');
         allTabs.forEach(tab => {
             if (tab !== approversTab) {
                 tab.setAttribute('aria-selected', 'false');
-                
-                // Only remove selection classes from other tabs, let them keep their other styling
-                const classesToRemove = [];
-                tab.classList.forEach(className => {
-                    if (className.startsWith('linkIsSelected') || className === 'is-selected' || className === 'ms-Pivot-link--selected') {
-                        classesToRemove.push(className);
-                    }
-                });
-                classesToRemove.forEach(className => tab.classList.remove(className));
-                
-                // Remove underline from other tabs
-                const textElement = tab.querySelector('.ms-Pivot-text') || tab.querySelector('span') || tab;
-                if (textElement) {
-                    textElement.style.borderBottom = '';
-                    textElement.style.borderBottomLeftRadius = '';
-                    textElement.style.borderBottomRightRadius = '';
-                }
+                // Don't modify any classes or styling - be completely conservative
             }
         });
         
@@ -919,25 +917,33 @@ function addApproversTab() {
                 textElement.style.borderBottomRightRadius = '0';
             }
             
-            // Now load content (after aria-selected is set)
+            // Show loading message immediately
             if (tabPanel) {
                 tabPanel.setAttribute('aria-labelledby', approversTab.id || 'approvers-tab');
-                tabPanel.innerHTML = '';
+                tabPanel.innerHTML = createLoadingMessage();
                 
-                // Load content and check if still selected after async operation
+                // Load actual content
                 const content = await createApproversContent();
                 
                 // Double-check we're still on the approvers tab after async operation
                 if (approversTab.getAttribute('aria-selected') === 'true') {
+                    tabPanel.innerHTML = '';
                     tabPanel.appendChild(content);
                 }
                 // If not, the content is discarded (user switched tabs)
             } else {
-                // Load content and check if still selected after async operation
+                // Show loading message for non-panel case
+                const loadingDiv = document.createElement('div');
+                loadingDiv.style.cssText = 'margin-top: 20px;';
+                loadingDiv.innerHTML = createLoadingMessage();
+                tabList.parentElement.appendChild(loadingDiv);
+                
+                // Load actual content
                 const content = await createApproversContent();
                 
                 // Double-check we're still on the approvers tab after async operation
                 if (approversTab.getAttribute('aria-selected') === 'true') {
+                    loadingDiv.remove();
                     content.style.marginTop = '20px';
                     tabList.parentElement.appendChild(content);
                 }
@@ -957,7 +963,7 @@ function addApproversTab() {
             if (approversTab && approversTab.getAttribute('aria-selected') === 'true') {
                 approversTab.setAttribute('aria-selected', 'false');
                 
-                // Remove approvers tab selection styling
+                // Remove approvers tab selection styling - be more conservative
                 const approversClassesToRemove = [];
                 approversTab.classList.forEach(className => {
                     if (className.startsWith('linkIsSelected') || className === 'is-selected' || className === 'ms-Pivot-link--selected') {
@@ -965,13 +971,6 @@ function addApproversTab() {
                     }
                 });
                 approversClassesToRemove.forEach(className => approversTab.classList.remove(className));
-                
-                // Ensure approvers tab has unselected classes
-                if (!approversTab.classList.contains('ms-Button')) approversTab.classList.add('ms-Button');
-                if (!approversTab.classList.contains('ms-Button--action')) approversTab.classList.add('ms-Button--action');
-                if (!approversTab.classList.contains('ms-Button--command')) approversTab.classList.add('ms-Button--command');
-                if (!approversTab.classList.contains('ms-Pivot-link')) approversTab.classList.add('ms-Pivot-link');
-                if (!approversTab.classList.contains('link-321')) approversTab.classList.add('link-321');
                 
                 // Remove underline from approvers tab
                 const approversTextElement = approversTab.querySelector('.ms-Pivot-text') || approversTab.querySelector('span') || approversTab;
@@ -1051,21 +1050,9 @@ function addApproversToAccessRequestPanel() {
     const approversContent = document.createElement('div');
     approversContent.className = '_8yCF-P7Hjex-9cWOFzoBQ _3wf7dgdgSzVTJ2joLPo1i';
     
-    // Add loading message as an activity item
+    // Add loading message using consistent loading UI
     const loadingItem = document.createElement('div');
-    loadingItem.className = 'ms-ActivityItem ms-pii zLkBxky56vFydgSdr31zm _1VvX0pq37eM74R-X7mfulk _1P-Bf6i1WnF32gvjteRm6N _2pRy-mAkPnCEHfoAs3QI2v css-431';
-    loadingItem.innerHTML = `
-        <div class="ms-ActivityItem-activityTypeIcon css-435">
-            <i data-icon-name="Sync" aria-hidden="true" class="root-440"></i>
-        </div>
-        <div class="ms-ActivityItem-activityContent css-436">
-            <span class="ms-ActivityItem-activityText css-437">
-                <div class="ms-pii _2etkRqe9i50I2tz5ReylyF css-309 zLkBxky56vFydgSdr31zm">
-                    <div>Loading approver information...</div>
-                </div>
-            </span>
-        </div>
-    `;
+    loadingItem.innerHTML = createLoadingMessage('Loading Package Approvers...', 'Fetching approver details for this access request');
     
     approversContent.appendChild(loadingItem);
     
@@ -1085,24 +1072,15 @@ function addApproversToAccessRequestPanel() {
             approversContent.innerHTML = '';
             approversContent.appendChild(approverContent);
         } catch (error) {
-            // Replace loading with error message using same structure
-            const errorItem = document.createElement('div');
-            errorItem.className = 'ms-ActivityItem ms-pii zLkBxky56vFydgSdr31zm _1VvX0pq37eM74R-X7mfulk _1P-Bf6i1WnF32gvjteRm6N _2pRy-mAkPnCEHfoAs3QI2v css-431';
-            errorItem.innerHTML = `
-                <div class="ms-ActivityItem-activityTypeIcon css-435">
-                    <i data-icon-name="Error" aria-hidden="true" class="root-238" style="color: #a80000;"></i>
-                </div>
-                <div class="ms-ActivityItem-activityContent css-436">
-                    <span class="ms-ActivityItem-activityText css-437">
-                        <div class="ms-pii _2etkRqe9i50I2tz5ReylyF css-309 zLkBxky56vFydgSdr31zm">
-                            <div>Error loading approver information: ${error.message}</div>
-                        </div>
-                    </span>
+            // Replace loading with error message using consistent styling
+            const errorMessage = `
+                <div style="padding: 20px; text-align: center;">
+                    <div style="font-size: 16px; color: #a80000; margin-bottom: 12px;">⚠️ Error Loading Approvers</div>
+                    <div style="font-size: 14px; color: #605e5c;">${error.message}</div>
                 </div>
             `;
             
-            approversContent.innerHTML = '';
-            approversContent.appendChild(errorItem);
+            approversContent.innerHTML = errorMessage;
         }
     })();
 }
