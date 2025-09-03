@@ -596,33 +596,6 @@ async function createApproversContent() {
             // Remove progress bar after all API calls
             container.removeChild(progressContainer);
 
-            // Create basic package info section
-            const packageInfoSection = document.createElement('div');
-            packageInfoSection.className = 'package-info-section';
-            
-            const copyButtonId = `copy-btn-${Date.now()}`;
-            const riskLevel = extractRiskLevel(pkg.displayName);
-            
-            packageInfoSection.innerHTML = `
-                <h4 style="margin: 0 0 12px 0; color: #323130;">📦 Package Information</h4>
-                <div style="margin-bottom: 8px;">
-                    <strong>Display Name:</strong> ${pkg.displayName}
-                    ${riskLevel !== 'unknown' ? `<span class="risk-badge ${riskLevel}">${riskLevel}</span>` : ''}
-                </div>
-                ${pkg.description ? `
-                    <div style="margin-bottom: 12px;">
-                        <strong>Description:</strong> ${pkg.description}
-                    </div>
-                ` : ''}
-                <div class="guid-label">Package GUID:</div>
-                <div class="package-guid">
-                    ${pkg.id}
-                    <button class="copy-button" id="${copyButtonId}" title="Copy GUID">📋 Copy</button>
-                </div>
-                <div class="api-status">
-                    ✅ ${lookupResult.message} via elm.iga.azure.com API
-                </div>
-            `;
 
             // Add simplified approvers section
             const approversSection = document.createElement('div');
@@ -676,8 +649,7 @@ async function createApproversContent() {
                     
                     approversHtml += `
                         <div style="margin-bottom: 24px;">
-                            <div style="font-weight: 600; color: #323130; margin-bottom: 12px; font-size: 16px;">Approver Group</div>
-                            <div style="font-size: 14px; color: #0078d4; margin-bottom: 12px;">${group.displayName}</div>
+                            <div style="font-size: 15px; color: #0078d4; font-weight: 500; margin-bottom: 12px; padding: 8px 12px; background: #f8f9fa; border-left: 3px solid #0078d4; border-radius: 4px;">${group.displayName}</div>
                     `;
                     
                     if (memberData && !memberData.error && memberData.members.length > 0) {
@@ -775,8 +747,7 @@ async function createApproversContent() {
                     for (const groupName of uniqueRequestorGroups) {
                         requestorHtml += `
                             <div style="margin-bottom: 12px;">
-                                <div style="font-weight: 600; color: #323130; margin-bottom: 4px; font-size: 16px;">Requestor Group</div>
-                                <div style="font-size: 14px; color: #107c10;">${groupName}</div>
+                                <div style="font-size: 15px; color: #107c10; font-weight: 500; margin-bottom: 4px; padding: 8px 12px; background: #f8f9fa; border-left: 3px solid #107c10; border-radius: 4px;">${groupName}</div>
                             </div>
                         `;
                     }
@@ -800,65 +771,9 @@ async function createApproversContent() {
             
             container.appendChild(requestorSection);
 
-            // Add copy functionality for package info
-            setTimeout(() => {
-                const copyBtn = document.getElementById(copyButtonId);
-                if (copyBtn) {
-                    copyBtn.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        copyToClipboard(pkg.id);
-                        copyBtn.textContent = '✅ Copied!';
-                        copyBtn.classList.add('copied');
-                        setTimeout(() => {
-                            copyBtn.textContent = '📋 Copy';
-                            copyBtn.classList.remove('copied');
-                        }, 2000);
-                    });
-                }
-            }, 100);
-
-            container.appendChild(packageInfoSection);
         } else {
-            // Create error section for not found
-            const packageInfoSection = document.createElement('div');
-            packageInfoSection.className = 'package-info-section';
-            packageInfoSection.innerHTML = `
-                <h4 style="margin: 0 0 12px 0; color: #323130;">📦 Package Information</h4>
-                <div style="margin-bottom: 8px;">
-                    <strong>Display Name:</strong> ${packageName}
-                </div>
-                <div class="warning-message">
-                    ⚠️ ${lookupResult.message}
-                    <div class="api-status">Searched via elm.iga.azure.com API</div>
-                </div>
-            `;
-            container.appendChild(packageInfoSection);
-        }
-
-
-        // Add debug information
-        if (lookupResult.found) {
-            const pkg = lookupResult.package;
-            const debugSection = document.createElement('div');
-            debugSection.innerHTML = `
-                <details style="margin-top: 16px; font-size: 11px; color: #605e5c;">
-                    <summary style="cursor: pointer; font-weight: 600;">🔧 Debug Information</summary>
-                    <div style="margin-top: 8px; background: #f3f2f1; padding: 8px; border-radius: 4px; font-family: monospace; max-height: 300px; overflow-y: auto;">
-                        <div><strong>Search Query:</strong> contains(displayName,'${packageName}')</div>
-                        <div><strong>Detail Query:</strong> id eq '${pkg.id}'</div>
-                        <div><strong>API Endpoint:</strong> https://elm.iga.azure.com/api/v1/accessPackages</div>
-                        <div><strong>Matches Found:</strong> ${lookupResult.matches}</div>
-                        <div><strong>Token Status:</strong> ${token ? 'Found' : 'Not found'}</div>
-                        <div><strong>Exact Match:</strong> ${pkg.displayName === packageName ? 'Yes' : 'No'}</div>
-                        <div><strong>Risk Level:</strong> ${extractRiskLevel(pkg.displayName)}</div>
-                        <div style="margin-top: 8px;"><strong>Full Package Object:</strong></div>
-                        <div style="background: #fff; padding: 4px; border-radius: 2px; margin-top: 2px; max-height: 150px; overflow-y: auto; font-size: 9px;">
-                            ${JSON.stringify(pkg, null, 2)}
-                        </div>
-                    </div>
-                </details>
-            `;
-            container.appendChild(debugSection);
+            // Show not found message but no separate box
+            container.innerHTML += `<div class="warning-message">⚠️ ${lookupResult.message}</div>`;
         }
 
     } catch (error) {
