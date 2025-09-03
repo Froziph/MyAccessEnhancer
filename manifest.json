@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "MyAccess Enhanced - GUID Lookup & Approvers",
+  "version": "2.1",
+  "description": "Enhanced MyAccess experience with GUID lookup via elm.iga.azure.com API, detailed approver information, and group member listings.",
+  "permissions": ["storage", "identity", "scripting", "activeTab", "cookies"],
+  "host_permissions": [
+    "https://myaccess.microsoft.com/*", 
+    "https://myapplications.microsoft.com/*",
+    "https://graph.microsoft.com/*",
+    "https://elm.iga.azure.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://myaccess.microsoft.com/*",
+        "https://myapplications.microsoft.com/*"
+      ],
+      "js": ["src/content.js"],
+      "css": ["src/styles.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["src/styles.css"],
+      "matches": [
+        "https://myaccess.microsoft.com/*",
+        "https://myapplications.microsoft.com/*"
+      ]
+    }
+  ]
+}
