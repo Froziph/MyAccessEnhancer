@@ -343,18 +343,17 @@ async function getGroupMembers(groupId) {
 function createCollapsibleSection(sectionId, contentId, title, subtitle = 'Show/hide details') {
     return `
         <div class="ms-List-cell" data-list-index="0" style="margin-bottom: 8px;">
-            <div class="collapsible-wrapper" style="background: #f8f9fa; border: 1px solid #edebe9; border-radius: 4px; overflow: hidden;">
+            <div class="collapsible-wrapper">
                 <div class="collapsible-section" data-section="${sectionId}" 
-                     role="button" data-is-focusable="true" tabindex="0"
-                     style="cursor: pointer; padding: 12px; background: transparent;">
+                     role="button" data-is-focusable="true" tabindex="0">
                     <div class="_2Wk_euHnEs1IEUewKXsi4D">
-                        <div class="_2Mud-yt14z94cvqhazDnLC" style="font-size: 16px; color: #323130; font-weight: 600;">${title}</div>
-                        <div class="hMwWTN0DSGG3aIKsHkP3f" style="font-size: 11px; color: #605e5c;">${subtitle}</div>
+                        <div class="collapsible-section-title">${title}</div>
+                        <div class="collapsible-section-subtitle">${subtitle}</div>
                     </div>
                     <div aria-live="assertive" style="position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0px; border: 0px; overflow: hidden; clip: rect(0px, 0px, 0px, 0px);">Collapsed</div>
                 </div>
-                <div class="collapsible-content" id="${contentId}" style="display: none; padding: 0 12px 12px 12px; background: transparent;">
-                    <div class="content-loading" style="padding: 20px; text-align: center; color: #605e5c;">
+                <div class="collapsible-content-area" id="${contentId}" data-expanded="false">
+                    <div class="content-loading">
                         Click to load details...
                     </div>
                 </div>
@@ -363,83 +362,145 @@ function createCollapsibleSection(sectionId, contentId, title, subtitle = 'Show/
     `;
 }
 
+// Global event delegation handler for collapsible sections
+const collapsibleHandlers = new Map();
+
 // Create reusable click handler for collapsible sections
 function createCollapsibleClickHandler(sectionSelector, contentId, loadingMessage, contentLoader) {
-    const sectionHeader = document.querySelector(`.collapsible-section[data-section="${sectionSelector}"]`);
     let contentLoaded = false;
     
-    if (!sectionHeader) return;
+    // Store handler configuration
+    collapsibleHandlers.set(sectionSelector, {
+        contentId,
+        loadingMessage,
+        contentLoader,
+        contentLoaded: false
+    });
     
-    sectionHeader.addEventListener('click', async function(e) {
-        e.preventDefault();
-        e.stopPropagation();
+    // Function to setup click handlers with better reliability
+    const setupHandlers = () => {
+        const sectionHeader = document.querySelector(`.collapsible-section[data-section="${sectionSelector}"]`);
         
-        const content = document.getElementById(contentId);
-        const ariaLive = this.querySelector('[aria-live="assertive"]');
+        if (!sectionHeader) {
+            console.log(`[MyAccess Enhanced] Section header not found for: ${sectionSelector}`);
+            return false;
+        }
         
-        if (content) {
-            const isExpanded = content.style.display !== 'none';
+        // Mark as ready for delegation
+        sectionHeader.setAttribute('data-handler-ready', 'true');
+        
+        console.log(`[MyAccess Enhanced] Handler ready for: ${sectionSelector}`);
+        return true;
+    };
+    
+    // Try to setup handlers with multiple attempts
+    const attemptSetup = (retryCount = 0) => {
+        if (setupHandlers()) {
+            return;
+        }
+        
+        if (retryCount < 5) {
+            setTimeout(() => attemptSetup(retryCount + 1), 100 * (retryCount + 1));
+        }
+    };
+    
+    attemptSetup();
+}
+
+// Global event delegation for all collapsible sections
+document.addEventListener('click', async function(e) {
+    const target = e.target.closest('.collapsible-section[data-section]');
+    if (!target || target.getAttribute('data-handler-ready') !== 'true') {
+        return;
+    }
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const sectionSelector = target.getAttribute('data-section');
+    const handlerConfig = collapsibleHandlers.get(sectionSelector);
+    
+    if (!handlerConfig) {
+        console.log(`[MyAccess Enhanced] No handler config found for: ${sectionSelector}`);
+        return;
+    }
+    
+    console.log(`[MyAccess Enhanced] Click handler triggered for: ${sectionSelector}`);
+    
+    const content = document.getElementById(handlerConfig.contentId);
+    const ariaLive = target.querySelector('[aria-live="assertive"]');
+    
+    if (!content) {
+        console.log(`[MyAccess Enhanced] Content area not found: ${handlerConfig.contentId}`);
+        return;
+    }
+    
+    const expandedAttr = content.getAttribute('data-expanded');
+    const isExpanded = expandedAttr === 'true';
+    console.log(`[MyAccess Enhanced] Current state - expanded attr: ${expandedAttr}, isExpanded: ${isExpanded}`);
+    
+    if (isExpanded) {
+        // Collapse
+        content.style.display = 'none';
+        content.setAttribute('data-expanded', 'false');
+        if (ariaLive) ariaLive.textContent = 'Collapsed';
+        console.log(`[MyAccess Enhanced] Collapsed: ${sectionSelector}`);
+    } else {
+        // Expand
+        content.style.display = 'block';
+        content.setAttribute('data-expanded', 'true');
+        if (ariaLive) ariaLive.textContent = 'Expanded';
+        console.log(`[MyAccess Enhanced] Expanded: ${sectionSelector}`);
+        
+        // Load content only when expanding for the first time
+        if (!handlerConfig.contentLoaded) {
+            handlerConfig.contentLoaded = true;
             
-            if (isExpanded) {
-                // Collapse
-                content.style.display = 'none';
-                ariaLive.textContent = 'Collapsed';
-            } else {
-                // Expand
-                content.style.display = 'block';
-                ariaLive.textContent = 'Expanded';
+            // Show loading message
+            content.innerHTML = `
+                <div class="loading-container">
+                    <div class="loading-title">${handlerConfig.loadingMessage}</div>
+                    <div class="loading-progress">
+                        <div class="loading-bar"></div>
+                    </div>
+                </div>
+            `;
+            
+            try {
+                // Create content using the provided loader function
+                const loadedContent = await handlerConfig.contentLoader();
                 
-                // Load content only when expanding for the first time
-                if (!contentLoaded) {
-                    contentLoaded = true;
-                    
-                    // Show loading message
-                    content.innerHTML = `
-                        <div style="padding: 20px; text-align: center;">
-                            <div style="font-size: 14px; color: #323130; margin-bottom: 8px;">${loadingMessage}</div>
-                            <div style="background: #f3f2f1; border-radius: 8px; height: 4px; width: 200px; margin: 0 auto; overflow: hidden;">
-                                <div style="background: linear-gradient(90deg, #0078d4, #40e0d0); height: 100%; width: 100%; animation: pulse 1.5s ease-in-out infinite;"></div>
-                            </div>
-                        </div>
-                    `;
-                    
-                    try {
-                        // Create content using the provided loader function
-                        const loadedContent = await contentLoader();
-                        
-                        // Update content with loaded data
-                        content.innerHTML = '';
-                        content.appendChild(loadedContent);
-                        
-                    } catch (error) {
-                        content.innerHTML = `
-                            <div style="padding: 12px; background: #fde7e9; border: 1px solid #a80000; border-radius: 6px;">
-                                <strong>Error loading content:</strong><br>
-                                ${error.message}
-                            </div>
-                        `;
-                    }
-                }
+                // Update content with loaded data
+                content.innerHTML = '';
+                content.appendChild(loadedContent);
+                
+            } catch (error) {
+                console.error(`[MyAccess Enhanced] Error loading content for ${sectionSelector}:`, error);
+                content.innerHTML = `
+                    <div class="error-message">
+                        <strong>Error loading content:</strong><br>
+                        ${error.message}
+                    </div>
+                `;
             }
         }
-    });
-    
-    // Add keyboard support
-    sectionHeader.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            this.click();
-        }
-    });
-    
-    // Prevent clicks on the content area from bubbling up
-    const contentArea = document.getElementById(contentId);
-    if (contentArea) {
-        contentArea.addEventListener('click', function(e) {
-            e.stopPropagation();
-        });
     }
-}
+});
+
+// Global keyboard support for collapsible sections
+document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter' && e.key !== ' ') {
+        return;
+    }
+    
+    const target = e.target.closest('.collapsible-section[data-section]');
+    if (!target || target.getAttribute('data-handler-ready') !== 'true') {
+        return;
+    }
+    
+    e.preventDefault();
+    target.click();
+});
 
 // Create consistent loading message
 function createLoadingMessage(title = 'Loading who can approve...', subtitle = 'Please wait while we fetch approver information') {
@@ -657,13 +718,13 @@ async function createSimpleRequestorsContent() {
                     for (const groupName of uniqueRequestorGroups) {
                         requestorsHtml += `
                             <div class="simple-requestor-group">
-                                <div style="font-size: 15px; color: #107c10; font-weight: 500; padding: 8px 12px; background: #f8f9fa; border-left: 3px solid #107c10; border-radius: 4px;">${groupName}</div>
+                                <div class="requestor-group-header">${groupName}</div>
                             </div>
                         `;
                     }
                 } else {
                     requestorsHtml = `
-                        <div style="padding: 12px; background: #e6f7ff; border: 1px solid #0078d4; border-radius: 6px;">
+                        <div class="open-access-message">
                             <strong>ℹ️ Open access</strong><br>
                             No specific requestor groups configured - this package may be open to all users.
                         </div>
@@ -673,7 +734,7 @@ async function createSimpleRequestorsContent() {
                 container.innerHTML = requestorsHtml;
             } else {
                 container.innerHTML = `
-                    <div style="padding: 12px; background: #fff4ce; border: 1px solid #ffb900; border-radius: 6px;">
+                    <div class="no-policies-message">
                         ⚠️ No assignment policies found for this package.
                     </div>
                 `;
@@ -775,7 +836,7 @@ async function createSimpleApproversContent() {
                             
                             approversHtml += `
                                 <div class="simple-approver-group">
-                                    <div style="font-size: 15px; color: #0078d4; font-weight: 500; padding: 8px 12px; background: #f8f9fa; border-left: 3px solid #0078d4; border-radius: 4px;">${group.displayName}</div>
+                                    <div class="approver-group-header">${group.displayName}</div>
                             `;
                             
                             // Show all members by default
@@ -784,31 +845,31 @@ async function createSimpleApproversContent() {
                             } else if (memberData && memberData.error) {
                                 if (memberData.error.includes('Authentication failed')) {
                                     approversHtml += `
-                                        <div style="padding: 12px; background: #fff4ce; border: 1px solid #ffb900; border-radius: 6px; margin-top: 8px;">
-                                            <div style="font-size: 12px; color: #8a6914; margin-bottom: 4px;"><strong>⚠️ Graph API Access Required</strong></div>
-                                            <div style="font-size: 11px; color: #8a6914; line-height: 1.4;">
+                                        <div class="graph-api-warning">
+                                            <div class="graph-api-warning-title">⚠️ Graph API Access Required</div>
+                                            <div class="graph-api-warning-text">
                                                 To see group members, Microsoft Graph API access is needed.<br>
                                                 <strong>Workaround:</strong> Run this command in a separate terminal:<br>
-                                                <code style="background: #f3f2f1; padding: 2px 4px; border-radius: 2px; font-family: monospace;">az rest --method GET --url "https://graph.microsoft.com/v1.0/groups/${group.groupId}/members"</code>
+                                                <code class="graph-api-command">az rest --method GET --url "https://graph.microsoft.com/v1.0/groups/${group.groupId}/members"</code>
                                             </div>
                                         </div>
                                     `;
                                 } else {
                                     approversHtml += `
-                                        <div style="margin-top: 8px; font-size: 12px; color: #a80000; font-style: italic;">
+                                        <div class="member-load-error">
                                             ⚠️ Could not load group members: ${memberData.error}
                                         </div>
                                     `;
                                 }
                             } else if (memberData && memberData.members.length === 0) {
                                 approversHtml += `
-                                    <div style="margin-top: 8px; font-size: 12px; color: #605e5c; font-style: italic;">
+                                    <div class="no-members-message">
                                         No members found in this group
                                     </div>
                                 `;
                             } else {
                                 approversHtml += `
-                                    <div style="margin-top: 8px; font-size: 12px; color: #8a6914; font-style: italic;">
+                                    <div class="loading-members-message">
                                         Loading group members...
                                     </div>
                                 `;
@@ -819,7 +880,7 @@ async function createSimpleApproversContent() {
                         } catch (error) {
                             approversHtml += `
                                 <div class="simple-approver-group">
-                                    <div style="font-size: 15px; color: #0078d4; font-weight: 500; padding: 8px 12px; background: #f8f9fa; border-left: 3px solid #0078d4; border-radius: 4px;">${group.displayName}</div>
+                                    <div class="approver-group-header">${group.displayName}</div>
                                     <div style="margin-top: 8px; font-size: 12px; color: #a80000; font-style: italic;">
                                         ⚠️ Could not load group members: ${error.message}
                                     </div>
@@ -838,7 +899,7 @@ async function createSimpleApproversContent() {
                 container.innerHTML = approversHtml;
             } else {
                 container.innerHTML = `
-                    <div style="padding: 12px; background: #fff4ce; border: 1px solid #ffb900; border-radius: 6px;">
+                    <div class="no-policies-message">
                         ⚠️ No assignment policies found for this package.
                     </div>
                 `;
@@ -942,7 +1003,7 @@ async function createApproversContent() {
                             
                             approversHtml += `
                                 <div class="simple-approver-group">
-                                    <div style="font-size: 15px; color: #0078d4; font-weight: 500; padding: 8px 12px; background: #f8f9fa; border-left: 3px solid #0078d4; border-radius: 4px;">${group.displayName}</div>
+                                    <div class="approver-group-header">${group.displayName}</div>
                             `;
                             
                             // Show all members by default
@@ -951,31 +1012,31 @@ async function createApproversContent() {
                             } else if (memberData && memberData.error) {
                                 if (memberData.error.includes('Authentication failed')) {
                                     approversHtml += `
-                                        <div style="padding: 12px; background: #fff4ce; border: 1px solid #ffb900; border-radius: 6px; margin-top: 8px;">
-                                            <div style="font-size: 12px; color: #8a6914; margin-bottom: 4px;"><strong>⚠️ Graph API Access Required</strong></div>
-                                            <div style="font-size: 11px; color: #8a6914; line-height: 1.4;">
+                                        <div class="graph-api-warning">
+                                            <div class="graph-api-warning-title">⚠️ Graph API Access Required</div>
+                                            <div class="graph-api-warning-text">
                                                 To see group members, Microsoft Graph API access is needed.<br>
                                                 <strong>Workaround:</strong> Run this command in a separate terminal:<br>
-                                                <code style="background: #f3f2f1; padding: 2px 4px; border-radius: 2px; font-family: monospace;">az rest --method GET --url "https://graph.microsoft.com/v1.0/groups/${group.groupId}/members"</code>
+                                                <code class="graph-api-command">az rest --method GET --url "https://graph.microsoft.com/v1.0/groups/${group.groupId}/members"</code>
                                             </div>
                                         </div>
                                     `;
                                 } else {
                                     approversHtml += `
-                                        <div style="margin-top: 8px; font-size: 12px; color: #a80000; font-style: italic;">
+                                        <div class="member-load-error">
                                             ⚠️ Could not load group members: ${memberData.error}
                                         </div>
                                     `;
                                 }
                             } else if (memberData && memberData.members.length === 0) {
                                 approversHtml += `
-                                    <div style="margin-top: 8px; font-size: 12px; color: #605e5c; font-style: italic;">
+                                    <div class="no-members-message">
                                         No members found in this group
                                     </div>
                                 `;
                             } else {
                                 approversHtml += `
-                                    <div style="margin-top: 8px; font-size: 12px; color: #8a6914; font-style: italic;">
+                                    <div class="loading-members-message">
                                         Loading group members...
                                     </div>
                                 `;
@@ -986,7 +1047,7 @@ async function createApproversContent() {
                         } catch (error) {
                             approversHtml += `
                                 <div class="simple-approver-group">
-                                    <div style="font-size: 15px; color: #0078d4; font-weight: 500; padding: 8px 12px; background: #f8f9fa; border-left: 3px solid #0078d4; border-radius: 4px;">${group.displayName}</div>
+                                    <div class="approver-group-header">${group.displayName}</div>
                                     <div style="margin-top: 8px; font-size: 12px; color: #a80000; font-style: italic;">
                                         ⚠️ Could not load group members: ${error.message}
                                     </div>
@@ -1052,7 +1113,7 @@ async function createApproversContent() {
             } else {
                 container.innerHTML = `
                     <h4 style="margin: 0 0 16px 0; color: #323130;">👥 Who can approve?</h4>
-                    <div style="padding: 12px; background: #fff4ce; border: 1px solid #ffb900; border-radius: 6px;">
+                    <div class="no-policies-message">
                         ⚠️ No assignment policies found for this package.
                     </div>
                 `;
@@ -1125,9 +1186,6 @@ function addApproversToRequestDetailsTab() {
     // Insert before the share container
     shareContainer.insertAdjacentElement('beforebegin', approversSection);
     
-    // Use reusable click handler for approvers
-    createCollapsibleClickHandler('request-details-approvers', 'request-details-approvers-content', 'Loading who can approve...', createSimpleApproversContent);
-    
     // Add requestor section
     const requestorsSection = document.createElement('div');
     requestorsSection.setAttribute('data-request-details-requestors-section', 'true');
@@ -1141,8 +1199,11 @@ function addApproversToRequestDetailsTab() {
     // Insert after the approvers section
     approversSection.insertAdjacentElement('afterend', requestorsSection);
     
-    // Use reusable click handler for requestors
-    createCollapsibleClickHandler('request-details-requestors', 'request-details-requestors-content', 'Loading who can request...', createSimpleRequestorsContent);
+    // Setup click handlers with delays to ensure DOM is ready
+    setTimeout(() => {
+        createCollapsibleClickHandler('request-details-approvers', 'request-details-approvers-content', 'Loading who can approve...', createSimpleApproversContent);
+        createCollapsibleClickHandler('request-details-requestors', 'request-details-requestors-content', 'Loading who can request...', createSimpleRequestorsContent);
+    }, 50);
 }
 
 // Add approvers content to Resources tab (keeping for backwards compatibility)
@@ -1292,9 +1353,6 @@ function addApproversToAccessRequestPanel() {
     // Append section to panel
     accessRequestPanel.appendChild(approversSection);
     
-    // Use reusable click handler for approvers
-    createCollapsibleClickHandler('access-request-approvers', 'access-request-approvers-content', 'Loading who can approve...', createSimpleApproversContent);
-    
     // Add requestor section
     const requestorsSection = document.createElement('div');
     requestorsSection.setAttribute('data-access-request-requestors-section', 'true');
@@ -1308,8 +1366,11 @@ function addApproversToAccessRequestPanel() {
     // Insert after the approvers section
     approversSection.insertAdjacentElement('afterend', requestorsSection);
     
-    // Use reusable click handler for requestors
-    createCollapsibleClickHandler('access-request-requestors', 'access-request-requestors-content', 'Loading who can request...', createSimpleRequestorsContent);
+    // Setup click handlers with delays to ensure DOM is ready
+    setTimeout(() => {
+        createCollapsibleClickHandler('access-request-approvers', 'access-request-approvers-content', 'Loading who can approve...', createSimpleApproversContent);
+        createCollapsibleClickHandler('access-request-requestors', 'access-request-requestors-content', 'Loading who can request...', createSimpleRequestorsContent);
+    }, 50);
 }
 
 
