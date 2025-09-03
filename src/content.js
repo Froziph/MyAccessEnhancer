@@ -863,53 +863,30 @@ function addApproversTab() {
         e.preventDefault();
         e.stopPropagation();
         
-        // Remove selection from all tabs and ensure proper styling
+        // Only clear selection from other tabs, don't forcefully style them
+        // Let native tabs manage their own styling
         const allTabs = tabList.querySelectorAll('[role="tab"]');
         allTabs.forEach(tab => {
-            tab.setAttribute('aria-selected', 'false');
-            
-            // Remove ONLY selection-related classes, preserve all other styling
-            const classesToRemove = [];
-            tab.classList.forEach(className => {
-                if (className.startsWith('linkIsSelected') || className === 'is-selected' || className === 'ms-Pivot-link--selected') {
-                    classesToRemove.push(className);
-                }
-            });
-            classesToRemove.forEach(className => tab.classList.remove(className));
-            
-            // Ensure essential classes are present (don't remove existing button classes)
-            if (!tab.classList.contains('ms-Button')) tab.classList.add('ms-Button');
-            if (!tab.classList.contains('ms-Button--action')) tab.classList.add('ms-Button--action');
-            if (!tab.classList.contains('ms-Button--command')) tab.classList.add('ms-Button--command');
-            if (!tab.classList.contains('ms-Pivot-link')) tab.classList.add('ms-Pivot-link');
-            if (!tab.classList.contains('link-321')) tab.classList.add('link-321');
-            
-            // Handle nested elements that might have underline styles
-            const nestedElements = tab.querySelectorAll('*');
-            nestedElements.forEach(el => {
-                const nestedClassesToRemove = [];
-                el.classList.forEach(className => {
+            if (tab !== approversTab) {
+                tab.setAttribute('aria-selected', 'false');
+                
+                // Only remove selection classes from other tabs, let them keep their other styling
+                const classesToRemove = [];
+                tab.classList.forEach(className => {
                     if (className.startsWith('linkIsSelected') || className === 'is-selected' || className === 'ms-Pivot-link--selected') {
-                        nestedClassesToRemove.push(className);
+                        classesToRemove.push(className);
                     }
                 });
-                nestedClassesToRemove.forEach(className => el.classList.remove(className));
-                el.style.borderBottom = '';
-                el.style.textDecoration = '';
-            });
-            
-            // Specifically remove underline from text elements
-            const textElements = tab.querySelectorAll('.ms-Pivot-text, span');
-            textElements.forEach(el => {
-                el.style.borderBottom = '';
-                el.style.borderBottomLeftRadius = '';
-                el.style.borderBottomRightRadius = '';
-            });
-            
-            // Also handle the tab itself
-            tab.style.borderBottom = '';
-            tab.style.borderBottomLeftRadius = '';
-            tab.style.borderBottomRightRadius = '';
+                classesToRemove.forEach(className => tab.classList.remove(className));
+                
+                // Remove underline from other tabs
+                const textElement = tab.querySelector('.ms-Pivot-text') || tab.querySelector('span') || tab;
+                if (textElement) {
+                    textElement.style.borderBottom = '';
+                    textElement.style.borderBottomLeftRadius = '';
+                    textElement.style.borderBottomRightRadius = '';
+                }
+            }
         });
         
         // Find the tab panel first
@@ -969,67 +946,45 @@ function addApproversTab() {
         }, 10);
     });
     
-    // Also update click handlers for existing tabs to restore proper selection
+    // Add lightweight handlers to existing tabs that only manage approvers tab cleanup
     existingTabs.forEach(tab => {
-        tab.addEventListener('click', function() {
-            // Clear selection from ALL tabs (including approvers and existing tabs)
-            const allTabsInList = tabList.querySelectorAll('[role="tab"]');
-            allTabsInList.forEach(anyTab => {
-                anyTab.setAttribute('aria-selected', 'false');
+        // Store original click handler before adding our own
+        const originalClickHandlers = [];
+        
+        // Add our handler with capture=true to run before native handlers
+        tab.addEventListener('click', function(e) {
+            // Only clear the approvers tab selection, let native tabs handle themselves
+            if (approversTab && approversTab.getAttribute('aria-selected') === 'true') {
+                approversTab.setAttribute('aria-selected', 'false');
                 
-                // Remove ONLY selection-related classes, preserve all other styling
-                const classesToRemove = [];
-                anyTab.classList.forEach(className => {
+                // Remove approvers tab selection styling
+                const approversClassesToRemove = [];
+                approversTab.classList.forEach(className => {
                     if (className.startsWith('linkIsSelected') || className === 'is-selected' || className === 'ms-Pivot-link--selected') {
-                        classesToRemove.push(className);
+                        approversClassesToRemove.push(className);
                     }
                 });
-                classesToRemove.forEach(className => anyTab.classList.remove(className));
+                approversClassesToRemove.forEach(className => approversTab.classList.remove(className));
                 
-                // Ensure essential classes are present (don't remove existing button classes)
-                if (!anyTab.classList.contains('ms-Button')) anyTab.classList.add('ms-Button');
-                if (!anyTab.classList.contains('ms-Button--action')) anyTab.classList.add('ms-Button--action');
-                if (!anyTab.classList.contains('ms-Button--command')) anyTab.classList.add('ms-Button--command');
-                if (!anyTab.classList.contains('ms-Pivot-link')) anyTab.classList.add('ms-Pivot-link');
-                if (!anyTab.classList.contains('link-321')) anyTab.classList.add('link-321');
+                // Ensure approvers tab has unselected classes
+                if (!approversTab.classList.contains('ms-Button')) approversTab.classList.add('ms-Button');
+                if (!approversTab.classList.contains('ms-Button--action')) approversTab.classList.add('ms-Button--action');
+                if (!approversTab.classList.contains('ms-Button--command')) approversTab.classList.add('ms-Button--command');
+                if (!approversTab.classList.contains('ms-Pivot-link')) approversTab.classList.add('ms-Pivot-link');
+                if (!approversTab.classList.contains('link-321')) approversTab.classList.add('link-321');
                 
-                // Remove underline styling from all tabs
-                const anyTextElement = anyTab.querySelector('.ms-Pivot-text') || anyTab.querySelector('span') || anyTab;
-                if (anyTextElement) {
-                    anyTextElement.style.borderBottom = '';
-                    anyTextElement.style.borderBottomLeftRadius = '';
-                    anyTextElement.style.borderBottomRightRadius = '';
+                // Remove underline from approvers tab
+                const approversTextElement = approversTab.querySelector('.ms-Pivot-text') || approversTab.querySelector('span') || approversTab;
+                if (approversTextElement) {
+                    approversTextElement.style.borderBottom = '';
+                    approversTextElement.style.borderBottomLeftRadius = '';
+                    approversTextElement.style.borderBottomRightRadius = '';
                 }
-                
-                // Handle nested elements that might have underline styles
-                const nestedElements = anyTab.querySelectorAll('*');
-                nestedElements.forEach(el => {
-                    const nestedClassesToRemove = [];
-                    el.classList.forEach(className => {
-                        if (className.startsWith('linkIsSelected') || className === 'is-selected' || className === 'ms-Pivot-link--selected') {
-                            nestedClassesToRemove.push(className);
-                        }
-                    });
-                    nestedClassesToRemove.forEach(className => el.classList.remove(className));
-                    el.style.borderBottom = '';
-                    el.style.textDecoration = '';
-                });
-            });
+            }
             
-            // Set the clicked tab as selected
-            setTimeout(() => {
-                tab.setAttribute('aria-selected', 'true');
-                tab.classList.remove('link-321');
-                tab.classList.add('is-selected', 'linkIsSelected-315', 'ms-Pivot-link--selected');
-                
-                const clickedTextElement = tab.querySelector('.ms-Pivot-text') || tab.querySelector('span') || tab;
-                if (clickedTextElement) {
-                    clickedTextElement.style.borderBottom = '2px solid #0078d4';
-                    clickedTextElement.style.borderBottomLeftRadius = '0';
-                    clickedTextElement.style.borderBottomRightRadius = '0';
-                }
-            }, 10);
-        });
+            // Let the native click handler proceed normally for the clicked tab
+            // DON'T prevent default or stop propagation - let Microsoft handle the tab switch
+        }, true); // Use capture=true to ensure we run before native handlers
     });
     
     // Try to trigger a click on request details to ensure UI is ready
