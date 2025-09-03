@@ -273,58 +273,25 @@
     margin-top: 4px;
 }
 
-/* View Approvers Link (styled like Details links) */
-.view-approvers-link {
-    background: none !important;
-    border: none !important;
-    color: #0078d4 !important;
-    cursor: pointer !important;
-    font-size: 14px !important;
-    text-decoration: underline !important;
-    padding: 0 !important;
-    margin: 4px 0 !important;
-    font-family: inherit !important;
-    display: inline !important;
-    text-align: left !important;
-}
 
-.view-approvers-link:hover {
-    color: #106ebe !important;
-    text-decoration: underline !important;
-}
-
-.view-approvers-link:active {
-    color: #005a9e !important;
-}
-
-.view-approvers-link:focus {
-    outline: 1px solid #0078d4 !important;
-    outline-offset: 2px !important;
-}
-
-/* Details Panel Integration */
-[data-approvers-section] {
-    background: #f8f9fa;
-    border-radius: 8px;
-    padding: 16px;
-    margin: 16px 0;
-}
-
+/* Keep existing approvers content styling for compatibility */
 [data-approvers-section] .approvers-tab-content {
     padding: 0;
     max-height: none;
 }
 
-/* Ensure proper styling in details panel context */
-.ms-Panel-content [data-approvers-section] .metadata-section {
-    background: white;
+[data-approvers-section] .metadata-section {
+    background: #f8f9fa;
+    margin-bottom: 16px;
+    border-radius: 8px;
+    padding: 16px;
 }
 
-.ms-Panel-content [data-approvers-section] .members-grid {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+[data-approvers-section] .members-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
 }
 
-.ms-Panel-content [data-approvers-section] .member-card {
+[data-approvers-section] .member-card {
     background: white;
     border: 1px solid #edebe9;
 }

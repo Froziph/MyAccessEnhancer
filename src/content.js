@@ -1054,9 +1054,8 @@ function addApproversToAccessRequestPanel() {
     const headerElement = document.querySelector('.ms-Panel-headerText');
     if (!headerElement || !headerElement.textContent.includes('Access request')) return;
     
-    // Check if we already added approvers link/section
-    if (accessRequestPanel.querySelector('[data-approvers-section]') || 
-        accessRequestPanel.querySelector('.view-approvers-link')) return;
+    // Check if we already added approvers section
+    if (accessRequestPanel.querySelector('[data-approvers-section]')) return;
     
     console.log('[MyAccess Enhanced] Access request panel found, attempting to add approvers...');
     
@@ -1087,90 +1086,75 @@ function addApproversToAccessRequestPanel() {
     // Store the package name for createApproversContent
     currentPackageName = packageName;
     
-    // Create View Approvers link (styled like existing Details links)
-    const viewApproversLink = document.createElement('button');
-    viewApproversLink.textContent = '👥 View Approvers';
-    viewApproversLink.className = 'ms-Link view-approvers-link';
-    viewApproversLink.type = 'button';
-    viewApproversLink.style.cssText = `
-        background: none;
-        border: none;
-        color: #0078d4;
-        cursor: pointer;
-        font-size: 14px;
-        text-decoration: underline;
-        padding: 0;
-        margin: 4px 0;
-        font-family: inherit;
-        display: inline;
-    `;
-    
-    // Add hover effect to match existing Details links
-    viewApproversLink.addEventListener('mouseenter', () => {
-        viewApproversLink.style.color = '#106ebe';
-    });
-    viewApproversLink.addEventListener('mouseleave', () => {
-        viewApproversLink.style.color = '#0078d4';
-    });
-    
-    // Create approvers section - initially hidden
+    // Create approvers section using same structure as Request history
     const approversSection = document.createElement('div');
     approversSection.setAttribute('data-approvers-section', 'true');
-    approversSection.style.cssText = `
-        margin-top: 12px;
-        border-top: 1px solid #edebe9;
-        padding-top: 20px;
-        display: none;
+    
+    // Create header using same classes as "Request history"
+    const approversHeader = document.createElement('div');
+    approversHeader.className = 'css-439 _2mxGreAISb4kDRuCL9U1yD';
+    approversHeader.textContent = 'Package Approvers';
+    
+    // Create content container using same classes as request history container
+    const approversContent = document.createElement('div');
+    approversContent.className = '_8yCF-P7Hjex-9cWOFzoBQ _3wf7dgdgSzVTJ2joLPo1i';
+    
+    // Add loading message as an activity item
+    const loadingItem = document.createElement('div');
+    loadingItem.className = 'ms-ActivityItem ms-pii zLkBxky56vFydgSdr31zm _1VvX0pq37eM74R-X7mfulk _1P-Bf6i1WnF32gvjteRm6N _2pRy-mAkPnCEHfoAs3QI2v css-431';
+    loadingItem.innerHTML = `
+        <div class="ms-ActivityItem-activityTypeIcon css-435">
+            <i data-icon-name="Sync" aria-hidden="true" class="root-440"></i>
+        </div>
+        <div class="ms-ActivityItem-activityContent css-436">
+            <span class="ms-ActivityItem-activityText css-437">
+                <div class="ms-pii _2etkRqe9i50I2tz5ReylyF css-309 zLkBxky56vFydgSdr31zm">
+                    <div>Loading approver information...</div>
+                </div>
+            </span>
+        </div>
     `;
     
-    // Add loading message initially
-    approversSection.innerHTML = `
-        <div style="font-size: 16px; font-weight: 600; color: #323130; margin-bottom: 12px;">👥 Package Approvers</div>
-        <div style="font-size: 14px; color: #605e5c;">Loading approver information...</div>
-    `;
+    approversContent.appendChild(loadingItem);
     
-    // Add link click handler to toggle approvers section
-    let isLoaded = false;
-    viewApproversLink.addEventListener('click', async (e) => {
-        e.preventDefault(); // Prevent any default link behavior
-        e.stopPropagation(); // Stop event bubbling
-        
-        if (approversSection.style.display === 'none') {
-            // Show the section
-            approversSection.style.display = 'block';
-            viewApproversLink.textContent = '👥 Hide Approvers';
-            
-            // Load content if not already loaded
-            if (!isLoaded) {
-                try {
-                    const approverContent = await createApproversContent();
-                    approversSection.innerHTML = `
-                        <div style="font-size: 16px; font-weight: 600; color: #323130; margin-bottom: 12px;">👥 Package Approvers</div>
-                    `;
-                    approversSection.appendChild(approverContent);
-                    isLoaded = true;
-                } catch (error) {
-                    approversSection.innerHTML = `
-                        <div style="font-size: 16px; font-weight: 600; color: #323130; margin-bottom: 12px;">👥 Package Approvers</div>
-                        <div class="error-message">
-                            <strong>Error loading approver information:</strong><br>
-                            ${error.message}
-                        </div>
-                    `;
-                    isLoaded = true;
-                }
-            }
-        } else {
-            // Hide the section
-            approversSection.style.display = 'none';
-            viewApproversLink.textContent = '👥 View Approvers';
-        }
-    });
+    // Assemble the section
+    approversSection.appendChild(approversHeader);
+    approversSection.appendChild(approversContent);
     
-    // Append link and section to panel (simple positioning)
-    accessRequestPanel.appendChild(viewApproversLink);
+    // Append section to panel
     accessRequestPanel.appendChild(approversSection);
+    
+    // Load approver content immediately
+    (async () => {
+        try {
+            const approverContent = await createApproversContent();
+            
+            // Clear the loading content and add the actual approvers content
+            approversContent.innerHTML = '';
+            approversContent.appendChild(approverContent);
+        } catch (error) {
+            // Replace loading with error message using same structure
+            const errorItem = document.createElement('div');
+            errorItem.className = 'ms-ActivityItem ms-pii zLkBxky56vFydgSdr31zm _1VvX0pq37eM74R-X7mfulk _1P-Bf6i1WnF32gvjteRm6N _2pRy-mAkPnCEHfoAs3QI2v css-431';
+            errorItem.innerHTML = `
+                <div class="ms-ActivityItem-activityTypeIcon css-435">
+                    <i data-icon-name="Error" aria-hidden="true" class="root-238" style="color: #a80000;"></i>
+                </div>
+                <div class="ms-ActivityItem-activityContent css-436">
+                    <span class="ms-ActivityItem-activityText css-437">
+                        <div class="ms-pii _2etkRqe9i50I2tz5ReylyF css-309 zLkBxky56vFydgSdr31zm">
+                            <div>Error loading approver information: ${error.message}</div>
+                        </div>
+                    </span>
+                </div>
+            `;
+            
+            approversContent.innerHTML = '';
+            approversContent.appendChild(errorItem);
+        }
+    })();
 }
+
 
 // Monitor for modal opening
 function watchForModal() {
@@ -1205,8 +1189,7 @@ function watchForModal() {
                 const currentContent = accessRequestPanel.textContent;
                 
                 // Check if we have an access request panel and it's not already processed
-                if (!accessRequestPanel.querySelector('.view-approvers-link') && 
-                    !accessRequestPanel.querySelector('[data-approvers-section]')) {
+                if (!accessRequestPanel.querySelector('[data-approvers-section]')) {
                     
                     // Try to add button immediately if we have access request content
                     if (currentContent.includes('You submitted a request for') || 
