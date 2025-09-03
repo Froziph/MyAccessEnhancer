@@ -272,3 +272,30 @@
     color: #605e5c;
     margin-top: 4px;
 }
+
+/* Details Panel Integration */
+[data-approvers-section] {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 16px;
+    margin: 16px 0;
+}
+
+[data-approvers-section] .approvers-tab-content {
+    padding: 0;
+    max-height: none;
+}
+
+/* Ensure proper styling in details panel context */
+.ms-Panel-content [data-approvers-section] .metadata-section {
+    background: white;
+}
+
+.ms-Panel-content [data-approvers-section] .members-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+
+.ms-Panel-content [data-approvers-section] .member-card {
+    background: white;
+    border: 1px solid #edebe9;
+}

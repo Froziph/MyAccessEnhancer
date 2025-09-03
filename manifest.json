@@ -3,7 +3,7 @@
   "name": "MyAccess Enhanced - GUID Lookup & Approvers",
   "version": "2.1",
   "description": "Enhanced MyAccess experience with GUID lookup via elm.iga.azure.com API, detailed approver information, and group member listings.",
-  "permissions": ["storage", "identity", "scripting", "activeTab", "cookies"],
+  "permissions": [],
   "host_permissions": [
     "https://myaccess.microsoft.com/*", 
     "https://myapplications.microsoft.com/*",
