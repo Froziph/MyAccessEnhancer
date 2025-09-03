@@ -1,4 +1,4 @@
-// MyAccess Package Approvers Tab Enhanced - Chrome Extension Version
+// MyAccess Package approvers Tab Enhanced - Chrome Extension Version
 console.log('[content.js] MyAccess Enhanced Chrome Extension loaded');
 
 // ========================================
@@ -340,7 +340,7 @@ async function getGroupMembers(groupId) {
 // ========================================
 
 // Create consistent loading message
-function createLoadingMessage(title = 'Loading Package Approvers...', subtitle = 'Please wait while we fetch approver information') {
+function createLoadingMessage(title = 'Loading package approvers...', subtitle = 'Please wait while we fetch approver information') {
     return `
         <div style="padding: 40px; text-align: center;">
             <div style="font-size: 16px; color: #323130; margin-bottom: 12px;">${title}</div>
@@ -924,7 +924,7 @@ function addApproversToRequestDetailsTab() {
              role="button" data-is-focusable="true" tabindex="0"
              style="cursor: pointer; padding: 12px; background: #f8f9fa; border: 1px solid #edebe9; border-radius: 4px; margin-bottom: 8px;">
             <div class="_2Wk_euHnEs1IEUewKXsi4D">
-                <div class="_2Mud-yt14z94cvqhazDnLC" style="font-size: 16px; color: #323130; font-weight: 600;">Package Approvers</div>
+                <div class="_2Mud-yt14z94cvqhazDnLC" style="font-size: 16px; color: #323130; font-weight: 600;">Package approvers</div>
                 <div class="hMwWTN0DSGG3aIKsHkP3f" style="font-size: 11px; color: #605e5c;">Show/hide details</div>
             </div>
             <div aria-live="assertive" style="position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0px; border: 0px; overflow: hidden; clip: rect(0px, 0px, 0px, 0px);">Collapsed</div>
@@ -972,7 +972,7 @@ function addApproversToRequestDetailsTab() {
                         // Show loading message
                         content.innerHTML = `
                             <div style="padding: 20px; text-align: center;">
-                                <div style="font-size: 14px; color: #323130; margin-bottom: 8px;">Loading Package Approvers...</div>
+                                <div style="font-size: 14px; color: #323130; margin-bottom: 8px;">Loading package approvers...</div>
                                 <div style="background: #f3f2f1; border-radius: 8px; height: 4px; width: 200px; margin: 0 auto; overflow: hidden;">
                                     <div style="background: linear-gradient(90deg, #0078d4, #40e0d0); height: 100%; width: 100%; animation: pulse 1.5s ease-in-out infinite;"></div>
                                 </div>
@@ -1062,11 +1062,11 @@ function addApproversToResourcesTab() {
         margin-bottom: 8px;
         margin-top: 8px;
     `;
-    approversHeader.textContent = '👥 Package Approvers';
+    approversHeader.textContent = '👥 Package approvers';
     
     // Add loading message
     const loadingDiv = document.createElement('div');
-    loadingDiv.innerHTML = createLoadingMessage('Loading Package Approvers...', 'Fetching approver information for this access package');
+    loadingDiv.innerHTML = createLoadingMessage('Loading package approvers...', 'Fetching approver information for this access package');
     
     approversSection.appendChild(approversHeader);
     approversSection.appendChild(loadingDiv);
@@ -1157,7 +1157,7 @@ function addApproversToAccessRequestPanel() {
              role="button" data-is-focusable="true" tabindex="0"
              style="cursor: pointer; padding: 12px; background: #f8f9fa; border: 1px solid #edebe9; border-radius: 4px; margin-bottom: 8px;">
             <div class="_2Wk_euHnEs1IEUewKXsi4D">
-                <div class="_2Mud-yt14z94cvqhazDnLC" style="font-size: 16px; color: #323130; font-weight: 600;">Package Approvers</div>
+                <div class="_2Mud-yt14z94cvqhazDnLC" style="font-size: 16px; color: #323130; font-weight: 600;">Package approvers</div>
                 <div class="hMwWTN0DSGG3aIKsHkP3f" style="font-size: 11px; color: #605e5c;">Show/hide details</div>
             </div>
             <div aria-live="assertive" style="position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0px; border: 0px; overflow: hidden; clip: rect(0px, 0px, 0px, 0px);">Collapsed</div>
@@ -1205,7 +1205,7 @@ function addApproversToAccessRequestPanel() {
                         // Show loading message
                         content.innerHTML = `
                             <div style="padding: 20px; text-align: center;">
-                                <div style="font-size: 14px; color: #323130; margin-bottom: 8px;">Loading Package Approvers...</div>
+                                <div style="font-size: 14px; color: #323130; margin-bottom: 8px;">Loading package approvers...</div>
                                 <div style="background: #f3f2f1; border-radius: 8px; height: 4px; width: 200px; margin: 0 auto; overflow: hidden;">
                                     <div style="background: linear-gradient(90deg, #0078d4, #40e0d0); height: 100%; width: 100%; animation: pulse 1.5s ease-in-out infinite;"></div>
                                 </div>
