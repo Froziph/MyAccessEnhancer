@@ -1,15 +1,28 @@
 {
   "manifest_version": 3,
   "name": "MyAccess Enhanced - GUID Lookup & Approvers",
-  "version": "2.1",
-  "description": "Enhanced MyAccess experience with GUID lookup via elm.iga.azure.com API, detailed approver information, and group member listings.",
-  "permissions": ["storage", "identity", "scripting", "activeTab", "cookies"],
+  "version": "1.0",
+  "description": "Enhance Microsoft MyAccess with package approver lookup, detailed approver information, and group member visibility.",
+  "author": "MyAccess Enhanced Team",
+  "homepage_url": "https://github.com/Froziph/MyAccessEnhancer",
+  
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  
+  "permissions": [
+    "storage"
+  ],
+  
   "host_permissions": [
     "https://myaccess.microsoft.com/*", 
     "https://myapplications.microsoft.com/*",
     "https://graph.microsoft.com/*",
     "https://elm.iga.azure.com/*"
   ],
+  
   "content_scripts": [
     {
       "matches": [
@@ -21,6 +34,7 @@
       "run_at": "document_idle"
     }
   ],
+  
   "web_accessible_resources": [
     {
       "resources": ["src/styles.css"],
@@ -29,5 +43,9 @@
         "https://myapplications.microsoft.com/*"
       ]
     }
-  ]
+  ],
+  
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self';"
+  }
 }

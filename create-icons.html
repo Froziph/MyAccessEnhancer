@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create Extension Icons</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        canvas { border: 1px solid #ccc; margin: 10px; }
+        .icon-container { display: flex; flex-wrap: wrap; gap: 20px; }
+        .icon-info { text-align: center; }
+    </style>
+</head>
+<body>
+    <h1>MyAccess Enhanced - Extension Icons</h1>
+    <p>Click "Generate Icons" to create the required icon files for Chrome Web Store submission.</p>
+    
+    <button onclick="generateIcons()">Generate Icons</button>
+    
+    <div class="icon-container" id="iconContainer"></div>
+    
+    <h2>Instructions:</h2>
+    <ol>
+        <li>Click "Generate Icons" button above</li>
+        <li>Right-click each generated icon and "Save image as..."</li>
+        <li>Save them in the "icons" folder with these exact names:
+            <ul>
+                <li>icon-16.png</li>
+                <li>icon-48.png</li>
+                <li>icon-128.png</li>
+            </ul>
+        </li>
+    </ol>
+
+    <script>
+        function generateIcons() {
+            const sizes = [16, 48, 128];
+            const container = document.getElementById('iconContainer');
+            container.innerHTML = '';
+            
+            sizes.forEach(size => {
+                const canvas = document.createElement('canvas');
+                canvas.width = size;
+                canvas.height = size;
+                const ctx = canvas.getContext('2d');
+                
+                // Create gradient background
+                const gradient = ctx.createLinearGradient(0, 0, size, size);
+                gradient.addColorStop(0, '#0078d4');
+                gradient.addColorStop(1, '#106ebe');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, size, size);
+                
+                // Add rounded corners
+                ctx.globalCompositeOperation = 'destination-in';
+                ctx.beginPath();
+                ctx.roundRect(0, 0, size, size, size * 0.15);
+                ctx.fill();
+                ctx.globalCompositeOperation = 'source-over';
+                
+                // Add icon symbol (shield/lock for security)
+                ctx.fillStyle = 'white';
+                ctx.font = `bold ${size * 0.6}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // Use a shield emoji or create a simple geometric shape
+                if (size >= 48) {
+                    ctx.fillText('🛡️', size / 2, size / 2);
+                } else {
+                    // For small icons, use a simple geometric shape
+                    ctx.fillStyle = 'white';
+                    const centerX = size / 2;
+                    const centerY = size / 2;
+                    const radius = size * 0.25;
+                    
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+                
+                // Create container div
+                const iconDiv = document.createElement('div');
+                iconDiv.className = 'icon-info';
+                iconDiv.innerHTML = `
+                    <div>${size}x${size}</div>
+                    <div>icon-${size}.png</div>
+                `;
+                iconDiv.appendChild(canvas);
+                
+                container.appendChild(iconDiv);
+            });
+        }
+        
+        // Helper function for rounded rectangles (if not supported)
+        if (!CanvasRenderingContext2D.prototype.roundRect) {
+            CanvasRenderingContext2D.prototype.roundRect = function(x, y, width, height, radius) {
+                this.beginPath();
+                this.moveTo(x + radius, y);
+                this.lineTo(x + width - radius, y);
+                this.quadraticCurveTo(x + width, y, x + width, y + radius);
+                this.lineTo(x + width, y + height - radius);
+                this.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+                this.lineTo(x + radius, y + height);
+                this.quadraticCurveTo(x, y + height, x, y + height - radius);
+                this.lineTo(x, y + radius);
+                this.quadraticCurveTo(x, y, x + radius, y);
+                this.closePath();
+            };
+        }
+    </script>
+</body>
+</html>

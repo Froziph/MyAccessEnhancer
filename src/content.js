@@ -867,15 +867,33 @@ function addApproversTab() {
         const allTabs = tabList.querySelectorAll('[role="tab"]');
         allTabs.forEach(tab => {
             tab.setAttribute('aria-selected', 'false');
-            // Remove all selection classes
-            tab.classList.remove('is-selected', 'linkIsSelected-315', 'ms-Pivot-link--selected');
-            // Add unselected classes
-            tab.classList.add('link-321', 'ms-Pivot-link');
+            
+            // Remove ONLY selection-related classes, preserve all other styling
+            const classesToRemove = [];
+            tab.classList.forEach(className => {
+                if (className.startsWith('linkIsSelected') || className === 'is-selected' || className === 'ms-Pivot-link--selected') {
+                    classesToRemove.push(className);
+                }
+            });
+            classesToRemove.forEach(className => tab.classList.remove(className));
+            
+            // Ensure essential classes are present (don't remove existing button classes)
+            if (!tab.classList.contains('ms-Button')) tab.classList.add('ms-Button');
+            if (!tab.classList.contains('ms-Button--action')) tab.classList.add('ms-Button--action');
+            if (!tab.classList.contains('ms-Button--command')) tab.classList.add('ms-Button--command');
+            if (!tab.classList.contains('ms-Pivot-link')) tab.classList.add('ms-Pivot-link');
+            if (!tab.classList.contains('link-321')) tab.classList.add('link-321');
             
             // Handle nested elements that might have underline styles
             const nestedElements = tab.querySelectorAll('*');
             nestedElements.forEach(el => {
-                el.classList.remove('is-selected', 'linkIsSelected-315', 'ms-Pivot-link--selected');
+                const nestedClassesToRemove = [];
+                el.classList.forEach(className => {
+                    if (className.startsWith('linkIsSelected') || className === 'is-selected' || className === 'ms-Pivot-link--selected') {
+                        nestedClassesToRemove.push(className);
+                    }
+                });
+                nestedClassesToRemove.forEach(className => el.classList.remove(className));
                 el.style.borderBottom = '';
                 el.style.textDecoration = '';
             });
@@ -894,18 +912,20 @@ function addApproversTab() {
             tab.style.borderBottomRightRadius = '';
         });
         
-        // Select the Approvers tab with proper styling
-        approversTab.setAttribute('aria-selected', 'true');
-        approversTab.classList.remove('link-321');
-        approversTab.classList.add('is-selected', 'linkIsSelected-315', 'ms-Pivot-link--selected');
-        
-        // Add underline styling to match native tabs
-        const textElement = approversTab.querySelector('.ms-Pivot-text') || approversTab.querySelector('span') || approversTab;
-        if (textElement) {
-            textElement.style.borderBottom = '2px solid #0078d4';
-            textElement.style.borderBottomLeftRadius = '0';
-            textElement.style.borderBottomRightRadius = '0';
-        }
+        // Select the Approvers tab with proper styling (use same delay as existing tabs)
+        setTimeout(() => {
+            approversTab.setAttribute('aria-selected', 'true');
+            approversTab.classList.remove('link-321');
+            approversTab.classList.add('is-selected', 'linkIsSelected-315', 'ms-Pivot-link--selected');
+            
+            // Add underline styling to match native tabs
+            const textElement = approversTab.querySelector('.ms-Pivot-text') || approversTab.querySelector('span') || approversTab;
+            if (textElement) {
+                textElement.style.borderBottom = '2px solid #0078d4';
+                textElement.style.borderBottomLeftRadius = '0';
+                textElement.style.borderBottomRightRadius = '0';
+            }
+        }, 10);
         
         // Find the tab panel
         let tabPanel = document.querySelector('[role="tabpanel"]');
@@ -938,24 +958,58 @@ function addApproversTab() {
     // Also update click handlers for existing tabs to restore proper selection
     existingTabs.forEach(tab => {
         tab.addEventListener('click', function() {
-            if (approversTab) {
-                approversTab.setAttribute('aria-selected', 'false');
-                approversTab.classList.remove('is-selected', 'linkIsSelected-315', 'ms-Pivot-link--selected');
-                approversTab.classList.add('link-321', 'ms-Pivot-link');
+            // Clear selection from ALL tabs (including approvers and existing tabs)
+            const allTabsInList = tabList.querySelectorAll('[role="tab"]');
+            allTabsInList.forEach(anyTab => {
+                anyTab.setAttribute('aria-selected', 'false');
                 
-                // Remove underline styling from Approvers tab
-                const approversTextElement = approversTab.querySelector('.ms-Pivot-text') || approversTab.querySelector('span') || approversTab;
-                if (approversTextElement) {
-                    approversTextElement.style.borderBottom = '';
-                    approversTextElement.style.borderBottomLeftRadius = '';
-                    approversTextElement.style.borderBottomRightRadius = '';
+                // Remove ONLY selection-related classes, preserve all other styling
+                const classesToRemove = [];
+                anyTab.classList.forEach(className => {
+                    if (className.startsWith('linkIsSelected') || className === 'is-selected' || className === 'ms-Pivot-link--selected') {
+                        classesToRemove.push(className);
+                    }
+                });
+                classesToRemove.forEach(className => anyTab.classList.remove(className));
+                
+                // Ensure essential classes are present (don't remove existing button classes)
+                if (!anyTab.classList.contains('ms-Button')) anyTab.classList.add('ms-Button');
+                if (!anyTab.classList.contains('ms-Button--action')) anyTab.classList.add('ms-Button--action');
+                if (!anyTab.classList.contains('ms-Button--command')) anyTab.classList.add('ms-Button--command');
+                if (!anyTab.classList.contains('ms-Pivot-link')) anyTab.classList.add('ms-Pivot-link');
+                if (!anyTab.classList.contains('link-321')) anyTab.classList.add('link-321');
+                
+                // Remove underline styling from all tabs
+                const anyTextElement = anyTab.querySelector('.ms-Pivot-text') || anyTab.querySelector('span') || anyTab;
+                if (anyTextElement) {
+                    anyTextElement.style.borderBottom = '';
+                    anyTextElement.style.borderBottomLeftRadius = '';
+                    anyTextElement.style.borderBottomRightRadius = '';
                 }
-            }
+                
+                // Handle nested elements that might have underline styles
+                const nestedElements = anyTab.querySelectorAll('*');
+                nestedElements.forEach(el => {
+                    const nestedClassesToRemove = [];
+                    el.classList.forEach(className => {
+                        if (className.startsWith('linkIsSelected') || className === 'is-selected' || className === 'ms-Pivot-link--selected') {
+                            nestedClassesToRemove.push(className);
+                        }
+                    });
+                    nestedClassesToRemove.forEach(className => el.classList.remove(className));
+                    el.style.borderBottom = '';
+                    el.style.textDecoration = '';
+                });
+            });
             
-            // Ensure clicked tab gets proper underline
+            // Set the clicked tab as selected
             setTimeout(() => {
+                tab.setAttribute('aria-selected', 'true');
+                tab.classList.remove('link-321');
+                tab.classList.add('is-selected', 'linkIsSelected-315', 'ms-Pivot-link--selected');
+                
                 const clickedTextElement = tab.querySelector('.ms-Pivot-text') || tab.querySelector('span') || tab;
-                if (tab.getAttribute('aria-selected') === 'true' && clickedTextElement) {
+                if (clickedTextElement) {
                     clickedTextElement.style.borderBottom = '2px solid #0078d4';
                     clickedTextElement.style.borderBottomLeftRadius = '0';
                     clickedTextElement.style.borderBottomRightRadius = '0';
