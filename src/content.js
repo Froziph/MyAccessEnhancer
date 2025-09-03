@@ -339,8 +339,110 @@ async function getGroupMembers(groupId) {
 // UTILITY FUNCTIONS
 // ========================================
 
+// Create reusable approvers section HTML
+function createApproversSection(sectionId, contentId) {
+    return `
+        <div class="ms-List-cell" data-list-index="0" style="margin-bottom: 8px;">
+            <div class="approvers-wrapper" style="background: #f8f9fa; border: 1px solid #edebe9; border-radius: 4px; overflow: hidden;">
+                <div class="collapsible-section" data-section="${sectionId}" 
+                     role="button" data-is-focusable="true" tabindex="0"
+                     style="cursor: pointer; padding: 12px; background: transparent;">
+                    <div class="_2Wk_euHnEs1IEUewKXsi4D">
+                        <div class="_2Mud-yt14z94cvqhazDnLC" style="font-size: 16px; color: #323130; font-weight: 600;">Who can approve?</div>
+                        <div class="hMwWTN0DSGG3aIKsHkP3f" style="font-size: 11px; color: #605e5c;">Show/hide details</div>
+                    </div>
+                    <div aria-live="assertive" style="position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0px; border: 0px; overflow: hidden; clip: rect(0px, 0px, 0px, 0px);">Collapsed</div>
+                </div>
+                <div class="collapsible-content" id="${contentId}" style="display: none; padding: 0 12px 12px 12px; background: transparent;">
+                    <div class="approver-content-loading" style="padding: 20px; text-align: center; color: #605e5c;">
+                        Click to load approver details...
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Create reusable approvers click handler
+function createApproversClickHandler(sectionSelector, contentId) {
+    const sectionHeader = document.querySelector(`.collapsible-section[data-section="${sectionSelector}"]`);
+    let approversLoaded = false;
+    
+    if (!sectionHeader) return;
+    
+    sectionHeader.addEventListener('click', async function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const content = document.getElementById(contentId);
+        const ariaLive = this.querySelector('[aria-live="assertive"]');
+        
+        if (content) {
+            const isExpanded = content.style.display !== 'none';
+            
+            if (isExpanded) {
+                // Collapse
+                content.style.display = 'none';
+                ariaLive.textContent = 'Collapsed';
+            } else {
+                // Expand
+                content.style.display = 'block';
+                ariaLive.textContent = 'Expanded';
+                
+                // Load approvers data only when expanding for the first time
+                if (!approversLoaded) {
+                    approversLoaded = true;
+                    
+                    // Show loading message
+                    content.innerHTML = `
+                        <div style="padding: 20px; text-align: center;">
+                            <div style="font-size: 14px; color: #323130; margin-bottom: 8px;">Loading who can approve...</div>
+                            <div style="background: #f3f2f1; border-radius: 8px; height: 4px; width: 200px; margin: 0 auto; overflow: hidden;">
+                                <div style="background: linear-gradient(90deg, #0078d4, #40e0d0); height: 100%; width: 100%; animation: pulse 1.5s ease-in-out infinite;"></div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    try {
+                        // Create a simple approvers content
+                        const approverContent = await createSimpleApproversContent();
+                        
+                        // Update content with loaded data
+                        content.innerHTML = '';
+                        content.appendChild(approverContent);
+                        
+                    } catch (error) {
+                        content.innerHTML = `
+                            <div style="padding: 12px; background: #fde7e9; border: 1px solid #a80000; border-radius: 6px;">
+                                <strong>Error loading approvers:</strong><br>
+                                ${error.message}
+                            </div>
+                        `;
+                    }
+                }
+            }
+        }
+    });
+    
+    // Add keyboard support
+    sectionHeader.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            this.click();
+        }
+    });
+    
+    // Prevent clicks on the content area from bubbling up
+    const contentArea = document.getElementById(contentId);
+    if (contentArea) {
+        contentArea.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+    }
+}
+
 // Create consistent loading message
-function createLoadingMessage(title = 'Loading package approvers...', subtitle = 'Please wait while we fetch approver information') {
+function createLoadingMessage(title = 'Loading who can approve...', subtitle = 'Please wait while we fetch approver information') {
     return `
         <div style="padding: 40px; text-align: center;">
             <div style="font-size: 16px; color: #323130; margin-bottom: 12px;">${title}</div>
@@ -727,7 +829,7 @@ async function createApproversContent() {
                 }
                 
                 // Create simple approvers section
-                let approversHtml = '<h4 style="margin: 0 0 16px 0; color: #323130;">👥 Approvers</h4>';
+                let approversHtml = '<h4 style="margin: 0 0 16px 0; color: #323130;">👥 Who can approve?</h4>';
                 
                 // Display each unique approver group with all members shown by default
                 const uniqueGroups = Array.from(allApproverGroups).map(g => JSON.parse(g));
@@ -850,7 +952,7 @@ async function createApproversContent() {
                 container.innerHTML = approversHtml;
             } else {
                 container.innerHTML = `
-                    <h4 style="margin: 0 0 16px 0; color: #323130;">👥 Approvers</h4>
+                    <h4 style="margin: 0 0 16px 0; color: #323130;">👥 Who can approve?</h4>
                     <div style="padding: 12px; background: #fff4ce; border: 1px solid #ffb900; border-radius: 6px;">
                         ⚠️ No assignment policies found for this package.
                     </div>
@@ -918,96 +1020,14 @@ function addApproversToRequestDetailsTab() {
         padding-top: 12px;
     `;
     
-    // Create collapsible header HTML
-    const approversHtml = `
-        <div class="ms-List-cell collapsible-section" data-list-index="0" data-section="request-details-approvers" 
-             role="button" data-is-focusable="true" tabindex="0"
-             style="cursor: pointer; padding: 12px; background: #f8f9fa; border: 1px solid #edebe9; border-radius: 4px; margin-bottom: 8px;">
-            <div class="_2Wk_euHnEs1IEUewKXsi4D">
-                <div class="_2Mud-yt14z94cvqhazDnLC" style="font-size: 16px; color: #323130; font-weight: 600;">Package approvers</div>
-                <div class="hMwWTN0DSGG3aIKsHkP3f" style="font-size: 11px; color: #605e5c;">Show/hide details</div>
-            </div>
-            <div aria-live="assertive" style="position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0px; border: 0px; overflow: hidden; clip: rect(0px, 0px, 0px, 0px);">Collapsed</div>
-            <div class="collapsible-content" id="request-details-approvers-content" style="display: none; padding: 12px 0 0 0; margin-top: 12px;">
-                <div class="approver-content-loading" style="padding: 20px; text-align: center; color: #605e5c;">
-                    Click to load approver details...
-                </div>
-            </div>
-        </div>
-    `;
-    
-    approversSection.innerHTML = approversHtml;
+    // Use reusable approvers section
+    approversSection.innerHTML = createApproversSection('request-details-approvers', 'request-details-approvers-content');
     
     // Insert before the share container
     shareContainer.insertAdjacentElement('beforebegin', approversSection);
     
-    // Add click handler for collapsible approvers section
-    setTimeout(() => {
-        const sectionHeader = approversSection.querySelector('.collapsible-section[data-section="request-details-approvers"]');
-        let approversLoaded = false;
-        
-        sectionHeader.addEventListener('click', async function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const content = document.getElementById('request-details-approvers-content');
-            const ariaLive = this.querySelector('[aria-live="assertive"]');
-            
-            if (content) {
-                const isExpanded = content.style.display !== 'none';
-                
-                if (isExpanded) {
-                    // Collapse
-                    content.style.display = 'none';
-                    ariaLive.textContent = 'Collapsed';
-                } else {
-                    // Expand
-                    content.style.display = 'block';
-                    ariaLive.textContent = 'Expanded';
-                    
-                    // Load approvers data only when expanding for the first time
-                    if (!approversLoaded) {
-                        approversLoaded = true;
-                        
-                        // Show loading message
-                        content.innerHTML = `
-                            <div style="padding: 20px; text-align: center;">
-                                <div style="font-size: 14px; color: #323130; margin-bottom: 8px;">Loading package approvers...</div>
-                                <div style="background: #f3f2f1; border-radius: 8px; height: 4px; width: 200px; margin: 0 auto; overflow: hidden;">
-                                    <div style="background: linear-gradient(90deg, #0078d4, #40e0d0); height: 100%; width: 100%; animation: pulse 1.5s ease-in-out infinite;"></div>
-                                </div>
-                            </div>
-                        `;
-                        
-                        try {
-                            // Create a simple approvers content for Request details tab
-                            const approverContent = await createSimpleApproversContent();
-                            
-                            // Update content with loaded data
-                            content.innerHTML = '';
-                            content.appendChild(approverContent);
-                            
-                        } catch (error) {
-                            content.innerHTML = `
-                                <div style="padding: 12px; background: #fde7e9; border: 1px solid #a80000; border-radius: 6px;">
-                                    <strong>Error loading approvers:</strong><br>
-                                    ${error.message}
-                                </div>
-                            `;
-                        }
-                    }
-                }
-            }
-        });
-        
-        // Add keyboard support for main section
-        sectionHeader.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                this.click();
-            }
-        });
-    }, 100);
+    // Use reusable click handler
+    createApproversClickHandler('request-details-approvers', 'request-details-approvers-content');
 }
 
 // Add approvers content to Resources tab (keeping for backwards compatibility)
@@ -1062,11 +1082,11 @@ function addApproversToResourcesTab() {
         margin-bottom: 8px;
         margin-top: 8px;
     `;
-    approversHeader.textContent = '👥 Package approvers';
+    approversHeader.textContent = '👥 Who can approve?';
     
     // Add loading message
     const loadingDiv = document.createElement('div');
-    loadingDiv.innerHTML = createLoadingMessage('Loading package approvers...', 'Fetching approver information for this access package');
+    loadingDiv.innerHTML = createLoadingMessage('Loading who can approve...', 'Fetching approver information for this access package');
     
     approversSection.appendChild(approversHeader);
     approversSection.appendChild(loadingDiv);
@@ -1087,7 +1107,7 @@ function addApproversToResourcesTab() {
             const errorDiv = document.createElement('div');
             errorDiv.innerHTML = `
                 <div style="padding: 20px; text-align: center;">
-                    <div style="font-size: 16px; color: #a80000; margin-bottom: 12px;">⚠️ Error Loading Approvers</div>
+                    <div style="font-size: 16px; color: #a80000; margin-bottom: 12px;">⚠️ Error loading approvers</div>
                     <div style="font-size: 14px; color: #605e5c;">${error.message}</div>
                 </div>
             `;
@@ -1151,96 +1171,14 @@ function addApproversToAccessRequestPanel() {
         padding-top: 12px;
     `;
     
-    // Create collapsible header HTML
-    const approversHtml = `
-        <div class="ms-List-cell collapsible-section" data-list-index="0" data-section="access-request-approvers" 
-             role="button" data-is-focusable="true" tabindex="0"
-             style="cursor: pointer; padding: 12px; background: #f8f9fa; border: 1px solid #edebe9; border-radius: 4px; margin-bottom: 8px;">
-            <div class="_2Wk_euHnEs1IEUewKXsi4D">
-                <div class="_2Mud-yt14z94cvqhazDnLC" style="font-size: 16px; color: #323130; font-weight: 600;">Package approvers</div>
-                <div class="hMwWTN0DSGG3aIKsHkP3f" style="font-size: 11px; color: #605e5c;">Show/hide details</div>
-            </div>
-            <div aria-live="assertive" style="position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0px; border: 0px; overflow: hidden; clip: rect(0px, 0px, 0px, 0px);">Collapsed</div>
-            <div class="collapsible-content" id="access-request-approvers-content" style="display: none; padding: 12px 0 0 0; margin-top: 12px;">
-                <div class="approver-content-loading" style="padding: 20px; text-align: center; color: #605e5c;">
-                    Click to load approver details...
-                </div>
-            </div>
-        </div>
-    `;
-    
-    approversSection.innerHTML = approversHtml;
+    // Use reusable approvers section
+    approversSection.innerHTML = createApproversSection('access-request-approvers', 'access-request-approvers-content');
     
     // Append section to panel
     accessRequestPanel.appendChild(approversSection);
     
-    // Add click handler for collapsible approvers section
-    setTimeout(() => {
-        const sectionHeader = approversSection.querySelector('.collapsible-section[data-section="access-request-approvers"]');
-        let approversLoaded = false;
-        
-        sectionHeader.addEventListener('click', async function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const content = document.getElementById('access-request-approvers-content');
-            const ariaLive = this.querySelector('[aria-live="assertive"]');
-            
-            if (content) {
-                const isExpanded = content.style.display !== 'none';
-                
-                if (isExpanded) {
-                    // Collapse
-                    content.style.display = 'none';
-                    ariaLive.textContent = 'Collapsed';
-                } else {
-                    // Expand
-                    content.style.display = 'block';
-                    ariaLive.textContent = 'Expanded';
-                    
-                    // Load approvers data only when expanding for the first time
-                    if (!approversLoaded) {
-                        approversLoaded = true;
-                        
-                        // Show loading message
-                        content.innerHTML = `
-                            <div style="padding: 20px; text-align: center;">
-                                <div style="font-size: 14px; color: #323130; margin-bottom: 8px;">Loading package approvers...</div>
-                                <div style="background: #f3f2f1; border-radius: 8px; height: 4px; width: 200px; margin: 0 auto; overflow: hidden;">
-                                    <div style="background: linear-gradient(90deg, #0078d4, #40e0d0); height: 100%; width: 100%; animation: pulse 1.5s ease-in-out infinite;"></div>
-                                </div>
-                            </div>
-                        `;
-                        
-                        try {
-                            // Create a simple approvers content for Access request panel
-                            const approverContent = await createSimpleApproversContent();
-                            
-                            // Update content with loaded data
-                            content.innerHTML = '';
-                            content.appendChild(approverContent);
-                            
-                        } catch (error) {
-                            content.innerHTML = `
-                                <div style="padding: 12px; background: #fde7e9; border: 1px solid #a80000; border-radius: 6px;">
-                                    <strong>Error loading approvers:</strong><br>
-                                    ${error.message}
-                                </div>
-                            `;
-                        }
-                    }
-                }
-            }
-        });
-        
-        // Add keyboard support for main section
-        sectionHeader.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                this.click();
-            }
-        });
-    }, 100);
+    // Use reusable click handler
+    createApproversClickHandler('access-request-approvers', 'access-request-approvers-content');
 }
 
 
