@@ -1027,211 +1027,132 @@ function addApproversTab() {
     }
 }
 
-// Add approver information to details panel
-function addApproversToDetailsPanel() {
-    // Look for the details panel
-    const detailsPanel = document.querySelector('.ms-Panel-content');
-    if (!detailsPanel) return;
+// Add approver information to access request panel
+function addApproversToAccessRequestPanel() {
+    // Look for the access request panel
+    const accessRequestPanel = document.querySelector('.ms-Panel-content');
+    if (!accessRequestPanel) return;
     
-    // Check if this is a request details panel by looking for "Requesting access to"
-    const isRequestPanel = detailsPanel.textContent.includes('Requesting access to');
-    if (!isRequestPanel) return;
+    // Check if this is an access request panel by looking for "Access request" header
+    const headerElement = document.querySelector('.ms-Panel-headerText');
+    if (!headerElement || !headerElement.textContent.includes('Access request')) return;
     
-    // Check if we already added approvers section
-    if (detailsPanel.querySelector('[data-approvers-section]')) return;
+    // Check if we already added approvers link/section
+    if (accessRequestPanel.querySelector('[data-approvers-section]') || 
+        accessRequestPanel.querySelector('.view-approvers-link')) return;
     
-    // Wait for content to be fully loaded before proceeding
-    const hasRequiredContent = detailsPanel.textContent.includes('Requested by') && 
-                              detailsPanel.textContent.includes('Request submitted') && 
-                              detailsPanel.textContent.includes('Requesting access to');
+    console.log('[MyAccess Enhanced] Access request panel found, attempting to add approvers...');
     
-    if (!hasRequiredContent) {
-        // Content not fully loaded yet, try again later
-        setTimeout(() => addApproversToDetailsPanel(), 200);
-        return;
-    }
-    
-    // Extract package name from "Requesting access to" section
+    // Extract package name from "You submitted a request for" text
     let packageName = null;
     
-    // Find all elements that might contain the package name
-    const allLabels = detailsPanel.querySelectorAll('label');
-    for (const label of allLabels) {
-        if (label.textContent.includes('Requesting access to')) {
-            // Look for the associated value in the parent structure
-            const parentDiv = label.closest('div');
-            if (parentDiv) {
-                // Try to find the package name in various possible locations
-                const valueSpan = parentDiv.querySelector('span.ms-pii .css-364 div, span .css-364 div');
-                if (valueSpan && valueSpan.textContent.trim()) {
-                    packageName = valueSpan.textContent.trim();
-                    break;
-                }
-                
-                // Fallback: look for any div with text content after the label
-                const allDivs = parentDiv.querySelectorAll('div');
-                for (const div of allDivs) {
-                    const text = div.textContent.trim();
-                    if (text && 
-                        text !== 'Requesting access to' && 
-                        !text.includes('Requested by') &&
-                        !text.includes('Requested for') &&
-                        !text.includes('Request submitted') &&
-                        text.length > 3) {
-                        packageName = text;
-                        break;
-                    }
-                }
-                
-                if (packageName) break;
-            }
-        }
-    }
-    
-    // Additional fallback: try to extract from the specific HTML pattern you showed
-    if (!packageName) {
-        const spanElements = detailsPanel.querySelectorAll('span.ms-pii.css-364.css-383 div');
-        for (const spanDiv of spanElements) {
-            const text = spanDiv.textContent.trim();
-            if (text && 
-                text !== 'Azure AD' && 
-                text !== 'You' && 
-                !text.includes('@') && 
-                !text.includes('AM') && 
-                !text.includes('PM') &&
-                text.length > 3) {
-                packageName = text;
+    // Look for the activity text that shows the request
+    const activityTexts = accessRequestPanel.querySelectorAll('.ms-ActivityItem-activityText');
+    for (const activityText of activityTexts) {
+        const text = activityText.textContent.trim();
+        if (text.includes('You submitted a request for')) {
+            // Extract package name after "You submitted a request for"
+            const match = text.match(/You submitted a request for (.+)/);
+            if (match && match[1]) {
+                packageName = match[1].trim();
                 break;
             }
         }
     }
     
-    if (!packageName) return;
+    if (!packageName) {
+        console.log('[MyAccess Enhanced] Could not extract package name from access request, using fallback');
+        packageName = 'Unknown Package';
+    }
+    
+    console.log('[MyAccess Enhanced] Extracted package name:', packageName);
     
     // Store the package name for createApproversContent
     currentPackageName = packageName;
     
-    // Create approvers section
-    const approversSection = document.createElement('div');
-    approversSection.setAttribute('data-approvers-section', 'true');
-    approversSection.style.marginTop = '20px';
-    approversSection.style.marginBottom = '20px';
-    approversSection.style.borderTop = '2px solid #0078d4';
-    approversSection.style.border = '1px solid #0078d4';
-    approversSection.style.borderRadius = '8px';
-    approversSection.style.padding = '16px';
-    approversSection.style.backgroundColor = '#f8f9fa';
-    approversSection.style.boxShadow = '0 2px 8px rgba(0,120,212,0.1)';
-    
-    // Add loading message initially with animation
-    approversSection.innerHTML = `
-        <div style="font-size: 16px; font-weight: 600; color: #0078d4; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-            👥 Package Approvers
-            <div style="width: 20px; height: 20px; border: 2px solid #0078d4; border-top: 2px solid transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-        </div>
-        <div style="font-size: 14px; color: #605e5c;">Loading approver information...</div>
-        <style>
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-        </style>
+    // Create View Approvers link (styled like existing Details links)
+    const viewApproversLink = document.createElement('button');
+    viewApproversLink.textContent = '👥 View Approvers';
+    viewApproversLink.className = 'ms-Link view-approvers-link';
+    viewApproversLink.type = 'button';
+    viewApproversLink.style.cssText = `
+        background: none;
+        border: none;
+        color: #0078d4;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: underline;
+        padding: 0;
+        margin: 4px 0;
+        font-family: inherit;
+        display: inline;
     `;
     
-    // Find the best insertion point - after the "Requesting access to" section
-    let insertionPoint = null;
-    const allDivs = detailsPanel.querySelectorAll('div');
+    // Add hover effect to match existing Details links
+    viewApproversLink.addEventListener('mouseenter', () => {
+        viewApproversLink.style.color = '#106ebe';
+    });
+    viewApproversLink.addEventListener('mouseleave', () => {
+        viewApproversLink.style.color = '#0078d4';
+    });
     
-    for (const div of allDivs) {
-        if (div.textContent.includes('Requesting access to')) {
-            // Find the parent container of this section
-            let parent = div;
-            while (parent && parent.parentElement !== detailsPanel) {
-                parent = parent.parentElement;
-            }
-            if (parent) {
-                insertionPoint = parent.nextElementSibling;
-                break;
-            }
-        }
-    }
+    // Create approvers section - initially hidden
+    const approversSection = document.createElement('div');
+    approversSection.setAttribute('data-approvers-section', 'true');
+    approversSection.style.cssText = `
+        margin-top: 12px;
+        border-top: 1px solid #edebe9;
+        padding-top: 20px;
+        display: none;
+    `;
     
-    // Insert the section at the best position or at the beginning if not found
-    if (insertionPoint) {
-        detailsPanel.insertBefore(approversSection, insertionPoint);
-    } else {
-        // Fallback: insert after the first few sections to ensure visibility
-        const firstSections = detailsPanel.querySelectorAll('div._3eSpq5BrnDbE9Bzu57bVhT');
-        if (firstSections.length > 2) {
-            firstSections[2].parentNode.insertBefore(approversSection, firstSections[2].nextSibling);
+    // Add loading message initially
+    approversSection.innerHTML = `
+        <div style="font-size: 16px; font-weight: 600; color: #323130; margin-bottom: 12px;">👥 Package Approvers</div>
+        <div style="font-size: 14px; color: #605e5c;">Loading approver information...</div>
+    `;
+    
+    // Add link click handler to toggle approvers section
+    let isLoaded = false;
+    viewApproversLink.addEventListener('click', async (e) => {
+        e.preventDefault(); // Prevent any default link behavior
+        e.stopPropagation(); // Stop event bubbling
+        
+        if (approversSection.style.display === 'none') {
+            // Show the section
+            approversSection.style.display = 'block';
+            viewApproversLink.textContent = '👥 Hide Approvers';
+            
+            // Load content if not already loaded
+            if (!isLoaded) {
+                try {
+                    const approverContent = await createApproversContent();
+                    approversSection.innerHTML = `
+                        <div style="font-size: 16px; font-weight: 600; color: #323130; margin-bottom: 12px;">👥 Package Approvers</div>
+                    `;
+                    approversSection.appendChild(approverContent);
+                    isLoaded = true;
+                } catch (error) {
+                    approversSection.innerHTML = `
+                        <div style="font-size: 16px; font-weight: 600; color: #323130; margin-bottom: 12px;">👥 Package Approvers</div>
+                        <div class="error-message">
+                            <strong>Error loading approver information:</strong><br>
+                            ${error.message}
+                        </div>
+                    `;
+                    isLoaded = true;
+                }
+            }
         } else {
-            detailsPanel.appendChild(approversSection);
+            // Hide the section
+            approversSection.style.display = 'none';
+            viewApproversLink.textContent = '👥 View Approvers';
         }
-    }
+    });
     
-    // Ensure the new content is visible by scrolling to it
-    setTimeout(() => {
-        approversSection.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'nearest',
-            inline: 'nearest'
-        });
-    }, 100);
-    
-    // Also try to expand the panel or make it more visible
-    const scrollableContent = document.querySelector('.ms-Panel-scrollableContent');
-    if (scrollableContent) {
-        // Ensure the scrollable area shows our content
-        setTimeout(() => {
-            const rect = approversSection.getBoundingClientRect();
-            const containerRect = scrollableContent.getBoundingClientRect();
-            
-            if (rect.bottom > containerRect.bottom || rect.top < containerRect.top) {
-                scrollableContent.scrollTop = approversSection.offsetTop - 50;
-            }
-        }, 200);
-    }
-    
-    // Load approver content asynchronously
-    setTimeout(async () => {
-        try {
-            const approverContent = await createApproversContent();
-            approversSection.innerHTML = `
-                <div style="font-size: 16px; font-weight: 600; color: #0078d4; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-                    👥 Package Approvers
-                    <span style="color: #107c10; font-size: 14px;">✓ Loaded</span>
-                </div>
-            `;
-            approversSection.appendChild(approverContent);
-            
-            // Flash to draw attention to the newly loaded content
-            approversSection.style.backgroundColor = '#e6f7ff';
-            setTimeout(() => {
-                approversSection.style.backgroundColor = '#f8f9fa';
-            }, 1000);
-            
-            // Ensure it's still visible after loading
-            setTimeout(() => {
-                approversSection.scrollIntoView({ 
-                    behavior: 'smooth', 
-                    block: 'nearest',
-                    inline: 'nearest'
-                });
-            }, 200);
-            
-        } catch (error) {
-            approversSection.innerHTML = `
-                <div style="font-size: 16px; font-weight: 600; color: #0078d4; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-                    👥 Package Approvers
-                    <span style="color: #a80000; font-size: 14px;">⚠ Error</span>
-                </div>
-                <div class="error-message">
-                    <strong>Error loading approver information:</strong><br>
-                    ${error.message}
-                </div>
-            `;
-        }
-    }, 100);
+    // Append link and section to panel (simple positioning)
+    accessRequestPanel.appendChild(viewApproversLink);
+    accessRequestPanel.appendChild(approversSection);
 }
 
 // Monitor for modal opening
@@ -1259,18 +1180,37 @@ function watchForModal() {
             }
         }
         
-        // Check for details panel with content change detection
-        const detailsPanel = document.querySelector('.ms-Panel-content');
-        if (detailsPanel) {
-            const currentContent = detailsPanel.textContent;
-            if (currentContent !== lastPanelContent) {
-                lastPanelContent = currentContent;
+        // Check for access request panel
+        const headerElement = document.querySelector('.ms-Panel-headerText');
+        if (headerElement && headerElement.textContent.includes('Access request')) {
+            const accessRequestPanel = document.querySelector('.ms-Panel-content');
+            if (accessRequestPanel) {
+                const currentContent = accessRequestPanel.textContent;
                 
-                // Multiple attempts with different delays to catch dynamic loading
-                setTimeout(addApproversToDetailsPanel, 50);
-                setTimeout(addApproversToDetailsPanel, 200);
-                setTimeout(addApproversToDetailsPanel, 500);
-                setTimeout(addApproversToDetailsPanel, 1000);
+                // Check if we have an access request panel and it's not already processed
+                if (!accessRequestPanel.querySelector('.view-approvers-link') && 
+                    !accessRequestPanel.querySelector('[data-approvers-section]')) {
+                    
+                    // Try to add button immediately if we have access request content
+                    if (currentContent.includes('You submitted a request for') || 
+                        currentContent.includes('Request history') ||
+                        currentContent.length > 100) {
+                        
+                        console.log('[MyAccess Enhanced] Found access request panel, attempting to add button...');
+                        addApproversToAccessRequestPanel();
+                    }
+                }
+                
+                // Also check for content changes
+                if (currentContent !== lastPanelContent && currentContent.length > 100) {
+                    lastPanelContent = currentContent;
+                    
+                    // Multiple attempts with different delays to catch dynamic loading
+                    setTimeout(addApproversToAccessRequestPanel, 50);
+                    setTimeout(addApproversToAccessRequestPanel, 200);
+                    setTimeout(addApproversToAccessRequestPanel, 500);
+                    setTimeout(addApproversToAccessRequestPanel, 1000);
+                }
             }
         }
     };
@@ -1284,7 +1224,7 @@ function watchForModal() {
     });
     
     // More frequent checking for better responsiveness
-    setInterval(checkForModal, 250);
+    setInterval(checkForModal, 100);
 }
 
 // ========================================
@@ -1297,40 +1237,38 @@ function init() {
     interceptPackageClicks();
     watchForModal();
     
-    // Check for existing details panels on page load
+    // Check for existing access request panels on page load
     setTimeout(() => {
-        addApproversToDetailsPanel();
+        addApproversToAccessRequestPanel();
     }, 500);
     setTimeout(() => {
-        addApproversToDetailsPanel();
+        addApproversToAccessRequestPanel();
     }, 1500);
     setTimeout(() => {
-        addApproversToDetailsPanel();
+        addApproversToAccessRequestPanel();
     }, 3000);
     
     // Debug helpers
     window.debugApproversTab = () => addApproversTab();
-    window.debugDetailsPanel = () => {
-        console.log('=== Debug Details Panel ===');
+    window.debugAccessRequestPanel = () => {
+        console.log('=== Debug Access Request Panel ===');
+        const headerElement = document.querySelector('.ms-Panel-headerText');
+        console.log('Header found:', !!headerElement);
+        console.log('Header text:', headerElement ? headerElement.textContent : 'N/A');
+        
         const panel = document.querySelector('.ms-Panel-content');
         console.log('Panel found:', !!panel);
         if (panel) {
-            console.log('Panel content includes "Requesting access to":', panel.textContent.includes('Requesting access to'));
-            console.log('Panel HTML:', panel.innerHTML);
+            console.log('Panel content includes "You submitted a request for":', panel.textContent.includes('You submitted a request for'));
+            console.log('Panel text content:', panel.textContent.substring(0, 300));
             
-            const labels = panel.querySelectorAll('label');
-            console.log('Labels found:', labels.length);
-            labels.forEach((label, i) => {
-                console.log(`Label ${i}:`, label.textContent);
-            });
-            
-            const spans = panel.querySelectorAll('span.ms-pii.css-364.css-383 div');
-            console.log('Span elements found:', spans.length);
-            spans.forEach((span, i) => {
-                console.log(`Span ${i}:`, span.textContent);
+            const activityTexts = panel.querySelectorAll('.ms-ActivityItem-activityText');
+            console.log('Activity texts found:', activityTexts.length);
+            activityTexts.forEach((text, i) => {
+                console.log(`Activity ${i}:`, text.textContent);
             });
         }
-        addApproversToDetailsPanel();
+        addApproversToAccessRequestPanel();
     };
 }
 
