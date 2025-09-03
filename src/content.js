@@ -193,7 +193,7 @@ async function lookupPackageGUID(displayName) {
         if (!data.value || data.value.length === 0) {
             return {
                 found: false,
-                message: `No packages found matching "${displayName}"`
+                message: `Cannot display approvers for access package "${displayName}"`
             };
         }
 
