@@ -946,12 +946,29 @@ function addApproversTab() {
         if (tabPanel) {
             tabPanel.setAttribute('aria-labelledby', approversTab.id || 'approvers-tab');
             tabPanel.innerHTML = '';
-            const content = await createApproversContent();
-            tabPanel.appendChild(content);
+            
+            // Check if approvers tab is still selected before and after loading
+            if (approversTab.getAttribute('aria-selected') === 'true') {
+                const content = await createApproversContent();
+                
+                // Double-check we're still on the approvers tab after async operation
+                if (approversTab.getAttribute('aria-selected') === 'true') {
+                    tabPanel.appendChild(content);
+                }
+                // If not, the content is discarded (user switched tabs)
+            }
         } else {
-            const content = await createApproversContent();
-            content.style.marginTop = '20px';
-            tabList.parentElement.appendChild(content);
+            // Check if approvers tab is still selected before and after loading
+            if (approversTab.getAttribute('aria-selected') === 'true') {
+                const content = await createApproversContent();
+                
+                // Double-check we're still on the approvers tab after async operation
+                if (approversTab.getAttribute('aria-selected') === 'true') {
+                    content.style.marginTop = '20px';
+                    tabList.parentElement.appendChild(content);
+                }
+                // If not, the content is discarded (user switched tabs)
+            }
         }
     });
     
