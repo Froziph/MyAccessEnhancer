@@ -912,22 +912,7 @@ function addApproversTab() {
             tab.style.borderBottomRightRadius = '';
         });
         
-        // Select the Approvers tab with proper styling (use same delay as existing tabs)
-        setTimeout(() => {
-            approversTab.setAttribute('aria-selected', 'true');
-            approversTab.classList.remove('link-321');
-            approversTab.classList.add('is-selected', 'linkIsSelected-315', 'ms-Pivot-link--selected');
-            
-            // Add underline styling to match native tabs
-            const textElement = approversTab.querySelector('.ms-Pivot-text') || approversTab.querySelector('span') || approversTab;
-            if (textElement) {
-                textElement.style.borderBottom = '2px solid #0078d4';
-                textElement.style.borderBottomLeftRadius = '0';
-                textElement.style.borderBottomRightRadius = '0';
-            }
-        }, 10);
-        
-        // Find the tab panel
+        // Find the tab panel first
         let tabPanel = document.querySelector('[role="tabpanel"]');
         
         if (!tabPanel) {
@@ -942,13 +927,27 @@ function addApproversTab() {
                 }
             }
         }
-        
-        if (tabPanel) {
-            tabPanel.setAttribute('aria-labelledby', approversTab.id || 'approvers-tab');
-            tabPanel.innerHTML = '';
+
+        // Select the Approvers tab with proper styling AND load content (use same delay as existing tabs)
+        setTimeout(async () => {
+            approversTab.setAttribute('aria-selected', 'true');
+            approversTab.classList.remove('link-321');
+            approversTab.classList.add('is-selected', 'linkIsSelected-315', 'ms-Pivot-link--selected');
             
-            // Check if approvers tab is still selected before and after loading
-            if (approversTab.getAttribute('aria-selected') === 'true') {
+            // Add underline styling to match native tabs
+            const textElement = approversTab.querySelector('.ms-Pivot-text') || approversTab.querySelector('span') || approversTab;
+            if (textElement) {
+                textElement.style.borderBottom = '2px solid #0078d4';
+                textElement.style.borderBottomLeftRadius = '0';
+                textElement.style.borderBottomRightRadius = '0';
+            }
+            
+            // Now load content (after aria-selected is set)
+            if (tabPanel) {
+                tabPanel.setAttribute('aria-labelledby', approversTab.id || 'approvers-tab');
+                tabPanel.innerHTML = '';
+                
+                // Load content and check if still selected after async operation
                 const content = await createApproversContent();
                 
                 // Double-check we're still on the approvers tab after async operation
@@ -956,10 +955,8 @@ function addApproversTab() {
                     tabPanel.appendChild(content);
                 }
                 // If not, the content is discarded (user switched tabs)
-            }
-        } else {
-            // Check if approvers tab is still selected before and after loading
-            if (approversTab.getAttribute('aria-selected') === 'true') {
+            } else {
+                // Load content and check if still selected after async operation
                 const content = await createApproversContent();
                 
                 // Double-check we're still on the approvers tab after async operation
@@ -969,7 +966,7 @@ function addApproversTab() {
                 }
                 // If not, the content is discarded (user switched tabs)
             }
-        }
+        }, 10);
     });
     
     // Also update click handlers for existing tabs to restore proper selection
