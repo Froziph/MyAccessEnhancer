@@ -83,8 +83,798 @@ Detailed SimCorp format:`,
 
         maxTokens: 1500,
         model: "gpt-4o-mini"
+    },
+
+    // Access Packages Documentation Assistant
+    ACCESS_PACKAGES_ASSISTANT: {
+        systemPrompt: `You are an expert assistant specializing in Azure Active Directory (AAD) access management and DevOps Center of Excellence (CoE) access packages. You have comprehensive knowledge about the access package system described in the provided documentation.
+
+## Access Package Categories
+- **Process Governance**: Approval rights for other access packages (no direct resource access)
+- **System Access Packages**: Cross-landing zone access (Engineers, DEV/TEST Owner, Operators)
+- **Landing Zone Access Packages**: Environment-specific access (PRD/STA Reader, Contributor, Owner, etc.)
+- **Azure DevOps Packages**: DevOps-specific permissions and deployment approvals
+
+## Risk-Based Policies
+- **Critical Risk**: 1 hour expiration, Manager approval required
+- **High Risk**: 1 hour expiration, SME approval required  
+- **Medium Risk**: 8 hours expiration, SME approval required
+- **Low Risk**: 180 days expiration, auto-approval
+- **Process Governance**: Various durations with different approval levels
+
+## Specific Package Details
+
+### Process Governance
+- **[SystemName] Managers**: Approve Process Governance packages (3-6 months duration)
+- **[SystemName] Subject Matter Expert**: Approve high/medium risk packages (3 months, team requestor)
+- **[SystemName] Stakeholder**: View/request System and PRD/STA packages (6 months)
+
+### System Access Packages
+- **[SystemName] Engineers**: DEV/TEST groups, Contributor rights, Azure DevOps access (Medium Risk, 8hr, SME approval)
+- **[SystemName] DEV/TEST owner**: Owner on DEV/TST subscriptions (Medium Risk, 8hr, SME approval)
+- **[SystemName] Operators**: Production monitoring, Support Request Contributor (6 months, Manager approval)
+
+### Landing Zone Packages
+- **[SystemName] [LandingZoneName] [PRD/STA] Reader**: Reader role (Low Risk, 180 days, auto-approval)
+- **[SystemName] [LandingZoneName] [PRD/STA] Contributor**: Contributor role (High Risk, 1hr, SME approval)
+- **[SystemName] [LandingZoneName] [PRD/STA] Owner**: Owner role (Critical Risk, 1hr, Manager approval)
+- **ConfReader/ConfWriter**: Confidential data access (High Risk, 1hr, SME approval)
+- **ConfPersonalReader/ConfPersonalWriter**: Personal data access (High Risk, 1hr, SME approval)
+
+### Azure DevOps Packages
+- **[SystemName] ADO Production Deployment Approver**: Approve prod deployments (ADO Medium Risk, 6 months, SME approval)
+- **[SystemName] ADO Project Manager**: Repo policies, permissions (ADO Critical Risk, 24hr, SME approval)
+- **[SystemName] ADO Endpoint Admin**: System endpoints (ADO High Risk, 5 days, SME approval)
+
+## Response Guidelines
+
+### Structure Your Responses
+1. **Start with a clear, direct answer**
+2. **Use proper headings and sections**
+3. **Include specific details with proper formatting**
+4. **End with actionable next steps**
+
+### HTML Formatting Rules
+- Use h3 for main section headings
+- Use h4 for subsections  
+- Use p for paragraphs with proper spacing
+- Use ul and li for lists
+- Use div with class="access-package-info" for main content blocks
+- Use div with class="warning-box" for important warnings
+
+### Required Classes
+- span with class="risk-badge [level]" for risk levels (with appropriate emoji)
+- span with class="package-name" for package names
+- span with class="duration" for time durations
+
+### Response Structure Template
+Always follow this structure:
+- h3 with direct answer
+- div with class="access-package-info" containing:
+  - h4 for Package Details
+  - p and ul with specific information
+  - h4 for Approval Process
+  - p with risk badge and duration
+  - h4 for Next Steps
+  - p with actionable instructions
+
+Replace [SystemName] with actual system name if provided by user. Always be helpful and actionable.`,
+
+        userPromptTemplate: `{userQuestion}`,
+
+        maxTokens: 800,
+        model: "gpt-4o-mini",
+        temperature: 0.7
     }
 };
+
+// ========================================
+// AI CHAT ASSISTANT FUNCTIONALITY
+// ========================================
+
+// Chat assistant state
+let chatMessages = [];
+let chatModal = null;
+let conversationHistory = []; // Store last 6 messages (3 exchanges) for context
+
+// Create and show AI chat modal dialog with modern styling
+function showChatModal() {
+    if (chatModal && document.body.contains(chatModal)) {
+        return;
+    }
+
+    // Create the main modal overlay
+    chatModal = document.createElement('div');
+    chatModal.className = 'ms-Modal is-open ai-chat-modal';
+    chatModal.setAttribute('role', 'dialog');
+    chatModal.setAttribute('aria-modal', 'true');
+    chatModal.style.zIndex = '1000';
+
+    // Create the modal HTML structure with modern styling
+    chatModal.innerHTML = `
+        <div class="ms-Overlay ms-Overlay--dark ai-modal-overlay"></div>
+        <div class="ms-Modal-scrollableContent ai-modal-content">
+            <div class="ms-Modal-main ai-modal-main">
+                <div class="ai-modal-header">
+                    <div class="ai-modal-header-content">
+                        <div class="ai-modal-icon">
+                            <div class="ai-modal-icon-inner">🤖</div>
+                        </div>
+                        <div class="ai-modal-title">
+                            <h2>Access Packages Assistant</h2>
+                            <p>Your AI guide to access management</p>
+                        </div>
+                    </div>
+                    <button class="ai-modal-close" type="button" aria-label="Close dialog">
+                        <span class="ai-close-icon">×</span>
+                    </button>
+                </div>
+                
+                <div class="ai-modal-body">
+                    <div class="ai-chat-messages" id="ai-chat-messages">
+                        <!-- Welcome message -->
+                        <div class="ai-welcome-card">
+                            <div class="ai-welcome-icon">✨</div>
+                            <div class="ai-welcome-content">
+                                <h3>Welcome! I'm here to help you navigate access packages.</h3>
+                                <div class="ai-capabilities">
+                                    <div class="ai-capability">
+                                        <span class="ai-capability-icon">🎯</span>
+                                        <span>Access package types & risk levels</span>
+                                    </div>
+                                    <div class="ai-capability">
+                                        <span class="ai-capability-icon">⚡</span>
+                                        <span>Approval workflows & permissions</span>
+                                    </div>
+                                    <div class="ai-capability">
+                                        <span class="ai-capability-icon">⏱️</span>
+                                        <span>Expiration policies & renewals</span>
+                                    </div>
+                                    <div class="ai-capability">
+                                        <span class="ai-capability-icon">🔒</span>
+                                        <span>Data classification patterns</span>
+                                    </div>
+                                </div>
+                                <p class="ai-welcome-prompt">What would you like to know about access packages?</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="ai-modal-footer">
+                    <div class="ai-input-container">
+                        <div class="ai-input-wrapper">
+                            <textarea class="ai-input-field" id="ai-chat-input" 
+                                     placeholder="Ask me anything about access packages, risk levels, or permissions..."
+                                     rows="1"></textarea>
+                            <button class="ai-send-button" id="ai-chat-send" type="button" title="Send message">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Add to document body
+    document.body.appendChild(chatModal);
+
+    // Add event listeners
+    const closeButton = chatModal.querySelector('.ai-modal-close');
+    const sendButton = chatModal.querySelector('.ai-send-button');
+    const input = chatModal.querySelector('.ai-input-field');
+    const overlay = chatModal.querySelector('.ai-modal-overlay');
+
+    if (closeButton) {
+        closeButton.addEventListener('click', closeChatModal);
+    }
+
+    if (sendButton) {
+        sendButton.addEventListener('click', sendChatMessage);
+    }
+
+    if (input) {
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendChatMessage();
+            }
+        });
+        
+        // Auto-resize textarea
+        input.addEventListener('input', () => {
+            input.style.height = 'auto';
+            input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+        });
+    }
+    
+    // Close on overlay click
+    if (overlay) {
+        overlay.addEventListener('click', closeChatModal);
+    }
+
+    // Focus on input after panel is shown
+    setTimeout(() => {
+        if (input) {
+            input.focus();
+        }
+    }, 100);
+
+}
+
+// Close chat modal
+function closeChatModal() {
+    if (chatModal && document.body.contains(chatModal)) {
+        chatModal.remove();
+        chatModal = null;
+        // Clear conversation history when modal is closed to save memory
+        conversationHistory = [];
+    }
+}
+
+// Send message to AI assistant
+async function sendChatMessage() {
+    const input = document.querySelector('.ai-input-field');
+    const messagesContainer = document.getElementById('ai-chat-messages');
+    const sendButton = document.querySelector('.ai-send-button');
+
+    const userMessage = input.value.trim();
+    if (!userMessage) return;
+
+    const apiKey = await getOpenAIKey();
+    if (!apiKey) {
+        showChatError('OpenAI API key not configured. Please set it in the extension settings.');
+        return;
+    }
+
+    // Add user message
+    addChatMessage(userMessage, 'user');
+    input.value = '';
+
+    // Check cache first for instant response
+    const cacheKey = userMessage.toLowerCase().trim();
+    if (responseCache.has(cacheKey)) {
+        addChatMessage(responseCache.get(cacheKey), 'bot');
+        return;
+    }
+
+    // Show typing indicator for new queries
+    const typingId = addTypingIndicator();
+    sendButton.disabled = true;
+
+    try {
+        // Use streaming response for better UX
+        const response = await queryChatAssistantWithStreaming(userMessage, apiKey, typingId);
+        removeTypingIndicator(typingId);
+        if (response) {
+            addChatMessage(response, 'bot');
+        }
+    } catch (error) {
+        removeTypingIndicator(typingId);
+        showChatError(`Error: ${error.message}`);
+    } finally {
+        sendButton.disabled = false;
+    }
+}
+
+// Well-formatted response cache based on actual documentation
+const responseCache = new Map([
+    ['what are the risk levels', 
+        '<h3>Access Package Risk Categories</h3>' +
+        '<div class="access-package-info">' +
+        '<ul>' +
+        '<li><span class="risk-badge critical">🔴 Critical Risk</span> - <span class="duration">1 hour</span> expiration, <strong>Manager approval</strong></li>' +
+        '<li><span class="risk-badge high">🟠 High Risk</span> - <span class="duration">1 hour</span> expiration, <strong>SME approval</strong></li>' +
+        '<li><span class="risk-badge medium">🟡 Medium Risk</span> - <span class="duration">8 hours</span> expiration, <strong>SME approval</strong></li>' +
+        '<li><span class="risk-badge low">🟢 Low Risk</span> - <span class="duration">180 days</span> expiration, <strong>auto-approval</strong></li>' +
+        '<li><span class="risk-badge governance">🔵 Process Governance</span> - Various durations, different approval levels</li>' +
+        '</ul>' +
+        '</div>'],
+
+    ['risk levels', 
+        '<h3>Quick Risk Reference</h3>' +
+        '<p><span class="risk-badge critical">Critical</span> 1hr (Manager) | <span class="risk-badge high">High</span> 1hr (SME) | <span class="risk-badge medium">Medium</span> 8hr (SME) | <span class="risk-badge low">Low</span> 180d (auto)</p>'],
+
+    ['engineers package', 
+        '<h3>Engineers Access Package</h3>' +
+        '<div class="access-package-info">' +
+        '<h4>Package Details</h4>' +
+        '<p><span class="package-name">[SystemName] Engineers</span> provides development access:</p>' +
+        '<ul>' +
+        '<li>All DEV/TEST AAD Groups (except Owner)</li>' +
+        '<li>Contributor + Key Vault Admin on DEV/TST subscriptions</li>' +
+        '<li>Reader access on staging/production subscriptions</li>' +
+        '<li>Azure DevOps Contributor + Build admin rights</li>' +
+        '</ul>' +
+        '<h4>Approval Process</h4>' +
+        '<p><span class="risk-badge medium">🟡 Medium Risk</span> - <span class="duration">8 hours</span></p>' +
+        '<p>Approved by: <strong>SME (Subject Matter Expert)</strong></p>' +
+        '</div>'],
+
+    ['production access', 
+        '<h3>Production Access Options</h3>' +
+        '<div class="access-package-info">' +
+        '<h4>Available Packages</h4>' +
+        '<ul>' +
+        '<li><span class="package-name">[SystemName] [LandingZoneName] PRD Reader</span><br>' +
+        '    <span class="risk-badge low">🟢 Low Risk</span> - <span class="duration">180 days</span>, auto-approved</li>' +
+        '<li><span class="package-name">[SystemName] [LandingZoneName] PRD Contributor</span><br>' +
+        '    <span class="risk-badge high">🟠 High Risk</span> - <span class="duration">1 hour</span>, SME approval</li>' +
+        '<li><span class="package-name">[SystemName] [LandingZoneName] PRD Owner</span><br>' +
+        '    <span class="risk-badge critical">🔴 Critical Risk</span> - <span class="duration">1 hour</span>, Manager approval</li>' +
+        '</ul>' +
+        '<h4>Next Steps</h4>' +
+        '<p>Choose based on your access needs. Reader for monitoring, Contributor for changes, Owner for full control.</p>' +
+        '</div>'],
+
+    ['what is sme', 
+        '<h3>Subject Matter Expert (SME)</h3>' +
+        '<div class="access-package-info">' +
+        '<p><strong>SME</strong> = Subject Matter Expert for your system.</p>' +
+        '<h4>What They Do</h4>' +
+        '<ul>' +
+        '<li>Approve <span class="risk-badge high">🟠 High Risk</span> access requests</li>' +
+        '<li>Approve <span class="risk-badge medium">🟡 Medium Risk</span> access requests</li>' +
+        '<li>Provide technical expertise for access decisions</li>' +
+        '</ul>' +
+        '<h4>How to Contact</h4>' +
+        '<p>Find members of your <span class="package-name">[SystemName] Subject Matter Expert</span> group in the access packages portal.</p>' +
+        '</div>']
+]);
+
+// Query the chat assistant with conversation context and caching
+async function queryChatAssistant(userQuestion, apiKey) {
+    const prompt = AI_PROMPTS.ACCESS_PACKAGES_ASSISTANT;
+    
+    // Check cache for common/exact queries
+    const cacheKey = userQuestion.toLowerCase().trim();
+    if (responseCache.has(cacheKey)) {
+        return responseCache.get(cacheKey);
+    }
+    
+    // Add page context to help AI understand what user is looking at
+    const pageContext = detectPageContext();
+    
+    // Build messages with conversation history
+    const messages = [
+        {
+            role: 'system',
+            content: prompt.systemPrompt + (pageContext ? `\n\nCURRENT CONTEXT: ${pageContext}` : '')
+        }
+    ];
+    
+    // Add recent conversation history for context (last 6 messages = 3 exchanges)
+    conversationHistory.slice(-6).forEach(msg => {
+        messages.push(msg);
+    });
+    
+    // Add current user question
+    messages.push({
+        role: 'user',
+        content: userQuestion
+    });
+    
+    try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: prompt.model,
+                messages: messages,
+                max_tokens: prompt.maxTokens,
+                temperature: prompt.temperature || 0.7,
+                stream: false // Will implement streaming in next phase
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(`OpenAI API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
+        }
+
+        const data = await response.json();
+        
+        if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+            throw new Error('Invalid response from OpenAI API');
+        }
+
+        const aiResponse = data.choices[0].message.content.trim();
+        
+        // Update conversation history
+        conversationHistory.push(
+            { role: 'user', content: userQuestion },
+            { role: 'assistant', content: aiResponse }
+        );
+        
+        // Keep only last 6 messages (3 exchanges)
+        if (conversationHistory.length > 6) {
+            conversationHistory = conversationHistory.slice(-6);
+        }
+        
+        // Cache responses for common/short queries
+        if (userQuestion.length < 100) {
+            responseCache.set(cacheKey, aiResponse);
+            // Clear old cache entries if too many
+            if (responseCache.size > 50) {
+                const firstKey = responseCache.keys().next().value;
+                responseCache.delete(firstKey);
+            }
+        }
+
+        return aiResponse;
+
+    } catch (error) {
+        if (error.message.includes('fetch')) {
+            throw new Error('Network error: Please check your internet connection');
+        }
+        throw error;
+    }
+}
+
+// Detect current page context for better responses
+function detectPageContext() {
+    let context = '';
+    
+    // Check for "Additional questions" modal (business justification)
+    if (document.querySelector('h3[title="Additional questions"]')) {
+        context = 'User is in the "Additional questions" modal filling out business justification for an access request. ';
+    }
+    
+    // Check for package selection/listing page
+    else if (document.querySelector('[data-testid*="package"], [aria-label*="package"]')) {
+        context = 'User is on the access packages listing/selection page. ';
+    }
+    
+    // Check for approval workflow page
+    else if (document.querySelector('[aria-label*="approval"], [aria-label*="request"]')) {
+        context = 'User is in an approval or request workflow. ';
+    }
+    
+    // Check for MyAccess main page
+    else if (window.location.hostname.includes('myaccess')) {
+        context = 'User is on the MyAccess portal. ';
+    }
+    
+    return context;
+}
+
+// Enhanced query with simulated streaming for better UX
+async function queryChatAssistantWithStreaming(userQuestion, apiKey, typingId) {
+    const prompt = AI_PROMPTS.ACCESS_PACKAGES_ASSISTANT;
+    
+    // Add page context to help AI understand what user is looking at
+    const pageContext = detectPageContext();
+    
+    // Build messages with conversation history
+    const messages = [
+        {
+            role: 'system',
+            content: prompt.systemPrompt + (pageContext ? `\n\nCURRENT CONTEXT: ${pageContext}` : '')
+        }
+    ];
+    
+    // Add recent conversation history for context
+    conversationHistory.slice(-6).forEach(msg => {
+        messages.push(msg);
+    });
+    
+    // Add current user question
+    messages.push({
+        role: 'user',
+        content: userQuestion
+    });
+    
+    try {
+        // Create a placeholder message for streaming effect
+        const messagesContainer = document.getElementById('ai-chat-messages');
+        const responseDiv = document.createElement('div');
+        responseDiv.className = 'ai-message ai-message-bot ai-streaming-response';
+        responseDiv.innerHTML = `
+            <div class="ai-message-avatar ai-avatar-bot">
+                <span>🤖</span>
+            </div>
+            <div class="ai-message-content">
+                <div class="ai-message-text">
+                    <span class="streaming-cursor">▋</span>
+                </div>
+            </div>
+        `;
+        
+        // Remove typing indicator and add streaming response
+        removeTypingIndicator(typingId);
+        messagesContainer.appendChild(responseDiv);
+        scrollChatToBottom();
+        
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: prompt.model,
+                messages: messages,
+                max_tokens: prompt.maxTokens,
+                temperature: prompt.temperature || 0.7
+            })
+        });
+
+        if (!response.ok) {
+            responseDiv.remove();
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(`OpenAI API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
+        }
+
+        const data = await response.json();
+        
+        if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+            responseDiv.remove();
+            throw new Error('Invalid response from OpenAI API');
+        }
+
+        const aiResponse = data.choices[0].message.content.trim();
+        const processedResponse = processAIMessage(aiResponse);
+        
+        // Simulate typing effect by revealing text gradually
+        const textElement = responseDiv.querySelector('.ai-message-text');
+        textElement.innerHTML = '';
+        
+        // Split response into words for smoother streaming effect
+        const words = processedResponse.split(' ');
+        let currentText = '';
+        
+        for (let i = 0; i < words.length; i++) {
+            currentText += (i === 0 ? '' : ' ') + words[i];
+            textElement.innerHTML = currentText + '<span class="streaming-cursor">▋</span>';
+            scrollChatToBottom();
+            
+            // Small delay between words for streaming effect
+            await new Promise(resolve => setTimeout(resolve, 50));
+        }
+        
+        // Final update without cursor
+        textElement.innerHTML = processedResponse;
+        responseDiv.className = 'ai-message ai-message-bot'; // Remove streaming class
+        scrollChatToBottom();
+        
+        // Update conversation history
+        conversationHistory.push(
+            { role: 'user', content: userQuestion },
+            { role: 'assistant', content: aiResponse }
+        );
+        
+        // Keep only last 6 messages (3 exchanges)
+        if (conversationHistory.length > 6) {
+            conversationHistory = conversationHistory.slice(-6);
+        }
+        
+        // Cache responses for common/short queries
+        if (userQuestion.length < 100) {
+            responseCache.set(userQuestion.toLowerCase().trim(), aiResponse);
+            // Clear old cache entries if too many
+            if (responseCache.size > 50) {
+                const firstKey = responseCache.keys().next().value;
+                responseCache.delete(firstKey);
+            }
+        }
+
+        return null; // Response already displayed via streaming
+
+    } catch (error) {
+        // Remove any streaming UI on error
+        const streamingResponse = document.querySelector('.ai-streaming-response');
+        if (streamingResponse) {
+            streamingResponse.remove();
+        }
+        
+        if (error.message.includes('fetch')) {
+            throw new Error('Network error: Please check your internet connection');
+        }
+        throw error;
+    }
+}
+
+// Escape HTML for user messages to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Clean and process AI message content
+function processAIMessage(message) {
+    // Remove code block markers completely
+    let cleanedMessage = message
+        .replace(/```html\s*/gi, '')
+        .replace(/```\s*/g, '')
+        .replace(/^html\s*/i, '')
+        .trim();
+    
+    // If the message starts with HTML tags, ensure it's properly formatted
+    if (cleanedMessage.startsWith('<')) {
+        // Already HTML content, return as is
+        return cleanedMessage;
+    }
+    
+    // Convert newlines to <br> for non-HTML text
+    cleanedMessage = cleanedMessage.replace(/\n/g, '<br>');
+    
+    return cleanedMessage;
+}
+
+// Add message to chat using modern card-based styling
+function addChatMessage(message, sender) {
+    const messagesContainer = document.getElementById('ai-chat-messages');
+    const messageDiv = document.createElement('div');
+    
+    if (sender === 'user') {
+        messageDiv.className = 'ai-message ai-message-user';
+        messageDiv.innerHTML = `
+            <div class="ai-message-content">
+                <div class="ai-message-text">
+                    ${escapeHtml(message).replace(/\n/g, '<br>')}
+                </div>
+            </div>
+            <div class="ai-message-avatar ai-avatar-user">
+                <span>👤</span>
+            </div>
+        `;
+    } else {
+        messageDiv.className = 'ai-message ai-message-bot';
+        const processedMessage = processAIMessage(message);
+        messageDiv.innerHTML = `
+            <div class="ai-message-avatar ai-avatar-bot">
+                <span>🤖</span>
+            </div>
+            <div class="ai-message-content">
+                <div class="ai-message-text">
+                    ${processedMessage}
+                </div>
+            </div>
+        `;
+    }
+    
+    messagesContainer.appendChild(messageDiv);
+    
+    // Force scroll to bottom with multiple methods for reliability
+    setTimeout(() => {
+        scrollChatToBottom();
+    }, 50);
+    
+    // Store message
+    chatMessages.push({ sender, message, timestamp: Date.now() });
+}
+
+// Add typing indicator using modern styling
+function addTypingIndicator() {
+    const messagesContainer = document.getElementById('ai-chat-messages');
+    const typingDiv = document.createElement('div');
+    const typingId = 'typing-' + Date.now();
+    typingDiv.id = typingId;
+    typingDiv.className = 'ai-message ai-message-bot ai-typing-indicator';
+    typingDiv.innerHTML = `
+        <div class="ai-message-avatar ai-avatar-bot ai-avatar-typing">
+            <span>🤖</span>
+        </div>
+        <div class="ai-message-content">
+            <div class="ai-typing-bubble">
+                <div class="ai-typing-dots">
+                    <span></span><span></span><span></span>
+                </div>
+            </div>
+        </div>
+    `;
+    messagesContainer.appendChild(typingDiv);
+    
+    // Scroll to bottom
+    setTimeout(() => {
+        scrollChatToBottom();
+    }, 50);
+    
+    return typingId;
+}
+
+// Remove typing indicator
+function removeTypingIndicator(typingId) {
+    const indicator = document.getElementById(typingId);
+    if (indicator) {
+        indicator.remove();
+    }
+}
+
+// Show error in chat
+function showChatError(errorMessage) {
+    addChatMessage(`❌ ${errorMessage}`, 'bot');
+}
+
+// Scroll chat to bottom with multiple fallback methods
+function scrollChatToBottom() {
+    const messagesContainer = document.getElementById('ai-chat-messages');
+    if (!messagesContainer) return;
+    
+    // Force immediate scroll without smooth behavior for reliability
+    const scrollToBottom = () => {
+        // Method 1: Scroll the modal body container
+        const modalBody = messagesContainer.closest('.ai-modal-body');
+        if (modalBody) {
+            modalBody.scrollTop = modalBody.scrollHeight;
+        }
+        
+        // Method 2: Scroll the messages container itself
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        
+        // Method 3: Use scrollIntoView on the last message
+        const lastMessage = messagesContainer.lastElementChild;
+        if (lastMessage) {
+            lastMessage.scrollIntoView({ behavior: 'instant', block: 'end' });
+        }
+    };
+    
+    // Execute immediately
+    scrollToBottom();
+    
+    // Execute again after a short delay to handle dynamic content
+    setTimeout(scrollToBottom, 10);
+    setTimeout(scrollToBottom, 50);
+    setTimeout(scrollToBottom, 100);
+}
+
+// Add separate AI chat button next to help button
+async function addAIChatButton() {
+    try {
+        if (!isExtensionContextValid()) {
+            return;
+        }
+        
+        const hasKey = await hasOpenAIKey();
+        if (!hasKey) {
+            return;
+        }
+    } catch (error) {
+        return;
+    }
+
+    // Check if button already exists
+    if (document.querySelector('.ai-chat-button')) {
+        return;
+    }
+
+    // Find the help button to insert after it
+    const helpButton = document.querySelector('button[title="Help"]');
+    if (!helpButton) {
+        return;
+    }
+
+    // Create AI chat button with same styling as other header buttons
+    const aiChatButton = document.createElement('button');
+    aiChatButton.type = 'button';
+    aiChatButton.className = 'ms-Button ms-Button--commandBar root-239 ai-chat-button';
+    aiChatButton.setAttribute('data-is-focusable', 'true');
+    aiChatButton.title = 'Access Packages AI Assistant - Ask questions about access packages, risk levels, and approvals';
+    
+    // Create button structure matching other header buttons
+    aiChatButton.innerHTML = `
+        <span class="ms-Button-flexContainer flexContainer-230" data-automationid="splitbuttonprimary">
+            <i data-icon-name="Robot" aria-hidden="true" class="ms-Button-icon icon-242 ai-chat-icon">🤖</i>
+        </span>
+    `;
+
+    // Add click handler
+    aiChatButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        showChatModal();
+    });
+
+    // Insert after help button
+    helpButton.insertAdjacentElement('afterend', aiChatButton);
+}
 
 // ========================================
 // AI ENHANCEMENT FUNCTIONALITY
@@ -1436,8 +2226,24 @@ function init() {
         addApproversToAccessRequestPanel();
     }, 3000);
     
+    // Add AI chat button next to help button
+    setTimeout(() => {
+        addAIChatButton();
+    }, 1000);
+    setTimeout(() => {
+        addAIChatButton();
+    }, 2000);
+    setTimeout(() => {
+        addAIChatButton();
+    }, 5000);
+    setTimeout(() => {
+        addAIChatButton();
+    }, 10000);
+    
     // Add global function for manual testing
     window.addAIButton = addAIButtonToBusinessJustification;
+    window.showAIChat = showChatModal;
+    window.addAIChatButton = addAIChatButton;
 }
 
 if (document.readyState === 'loading') {
