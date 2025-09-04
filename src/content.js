@@ -178,13 +178,21 @@ async function lookupPackageGUID(displayName, context = 'general') {
             let message;
             switch(context) {
                 case 'approvers':
-                    message = `Cannot display approvers for access package "${displayName}"`;
+                    if (displayName.toLowerCase().includes('stakeholder')) {
+                        message = `Cannot display approvers for access package "${displayName}" - Missing permissions to access package information. Once you obtain the Stakeholder package, you will be able to see approver information for this and other packages in the same group.`;
+                    } else {
+                        message = `Cannot display approvers for access package "${displayName}" - Missing permissions to access package information. You may need elevated permissions or the appropriate Stakeholder package to view this data.`;
+                    }
                     break;
                 case 'requestors':
-                    message = `Cannot display requestors for access package "${displayName}"`;
+                    if (displayName.toLowerCase().includes('stakeholder')) {
+                        message = `Cannot display requestors for access package "${displayName}" - Missing permissions to access package information. Once you obtain the Stakeholder package, you will be able to see requestor information for this and other packages in the same group.`;
+                    } else {
+                        message = `Cannot display requestors for access package "${displayName}" - Missing permissions to access package information. You may need elevated permissions or the appropriate Stakeholder package to view this data.`;
+                    }
                     break;
                 default:
-                    message = `Cannot find access package "${displayName}"`;
+                    message = `Cannot find access package "${displayName}" - This may be due to missing permissions or the package name not matching exactly.`;
                     break;
             }
             return {
