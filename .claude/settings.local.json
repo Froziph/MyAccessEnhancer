@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(/C:\\Users\\anls\\source\\repos\\MyAccessEnhancer\\src/**)",
+      "Read(/C:\\Users\\anls\\source\\repos\\MyAccessEnhancer\\src/**)",
+      "Read(/C:\\Users\\anls\\source\\repos\\MyAccessEnhancer/**)",
+      "Read(/C:\\Users\\anls\\source\\repos\\MyAccessEnhancer\\src/**)",
+      "Read(/C:\\Users\\anls\\source\\repos\\MyAccessEnhancer\\src/**)",
+      "Read(/C:\\Users\\anls\\source\\repos\\MyAccessEnhancer/**)",
+      "Bash(dir:*)",
+      "Read(/C:\\Users\\anls\\source\\repos\\MyAccessEnhancer\\src/**)",
+      "Read(/C:\\Users\\anls\\source\\repos\\MyAccessEnhancer\\src/**)",
+      "Read(/C:\\Users\\anls\\source\\repos\\MyAccessEnhancer/**)",
+      "Read(/C:\\Users\\anls\\source\\repos\\MyAccessEnhancer\\src/**)",
+      "Read(/C:\\Users\\anls\\source\\repos\\MyAccessEnhancer/**)",
+      "Read(/C:\\Users\\anls\\source\\repos\\MyAccessEnhancer\\src/**)",
+      "Read(/C:\\Users\\anls\\source\\repos\\MyAccessEnhancer\\src/**)",
+      "Read(/C:\\Users\\anls\\source\\repos\\MyAccessEnhancer\\src/**)",
+      "Read(/C:\\Users\\anls\\source\\repos\\MyAccessEnhancer\\src/**)",
+      "Read(/C:\\Users\\anls\\source\\repos\\MyAccessEnhancer\\src/**)",
+      "Read(/C:\\Users\\anls\\source\\repos\\MyAccessEnhancer\\src/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

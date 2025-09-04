@@ -273,3 +273,226 @@
     padding: 20px;
     text-align: center;
 }
+
+/* ========================================
+   AI ENHANCEMENT BUTTON STYLES
+   ======================================== */
+
+/* AI Enhancement Button */
+.ai-enhance-btn {
+    background: none !important;
+    border: none !important;
+    color: #605e5c !important;
+    font-size: 16px !important;
+    padding: 6px !important;
+    margin-right: 8px !important;
+    cursor: pointer !important;
+    border-radius: 4px !important;
+    transition: all 0.2s ease-in-out !important;
+    opacity: 0.7 !important;
+    position: relative !important;
+    width: 28px !important;
+    height: 28px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.ai-enhance-btn:hover {
+    opacity: 1 !important;
+    background-color: rgba(96, 94, 92, 0.1) !important;
+    transform: scale(1.05) !important;
+}
+
+.ai-enhance-btn:active {
+    transform: scale(0.95) !important;
+    background-color: rgba(96, 94, 92, 0.15) !important;
+}
+
+.ai-enhance-btn:focus {
+    outline: 1px solid #605e5c !important;
+    outline-offset: 1px !important;
+}
+
+/* Loading state */
+.ai-enhance-btn.loading {
+    cursor: not-allowed !important;
+    opacity: 0.5 !important;
+    animation: ai-button-pulse 1.5s ease-in-out infinite !important;
+}
+
+.ai-enhance-btn.loading::before {
+    content: "" !important;
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    width: 12px !important;
+    height: 12px !important;
+    margin-top: -6px !important;
+    margin-left: -6px !important;
+    border: 2px solid transparent !important;
+    border-top-color: #605e5c !important;
+    border-radius: 50% !important;
+    animation: ai-button-spin 1s linear infinite !important;
+}
+
+.ai-enhance-btn.loading {
+    color: transparent !important;
+}
+
+/* Success state */
+.ai-enhance-btn.success {
+    color: #107c10 !important;
+    opacity: 1 !important;
+    cursor: not-allowed !important;
+    background-color: rgba(16, 124, 16, 0.1) !important;
+    animation: ai-button-success-pulse 0.3s ease-out !important;
+}
+
+.ai-enhance-btn.success:hover {
+    transform: none !important;
+    background-color: rgba(16, 124, 16, 0.1) !important;
+}
+
+@keyframes ai-button-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes ai-button-pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 0.3; }
+}
+
+@keyframes ai-button-success-pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+/* AI Messages */
+.ai-message {
+    margin-top: 8px;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    line-height: 1.4;
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    animation: ai-message-slide-in 0.3s ease-out;
+    position: relative;
+}
+
+.ai-message::before {
+    content: "";
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    margin-top: 6px;
+    flex-shrink: 0;
+}
+
+.ai-message-success {
+    background-color: #dff6dd;
+    border: 1px solid #107c10;
+    color: #107c10;
+}
+
+.ai-message-success::before {
+    background-color: #107c10;
+}
+
+.ai-message-error {
+    background-color: #fde7e9;
+    border: 1px solid #d83b01;
+    color: #d83b01;
+}
+
+.ai-message-error::before {
+    background-color: #d83b01;
+}
+
+.ai-message-info {
+    background-color: #deecf9;
+    border: 1px solid #0078d4;
+    color: #0078d4;
+}
+
+.ai-message-info::before {
+    background-color: #0078d4;
+}
+
+@keyframes ai-message-slide-in {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Ensure button positioning in Additional Questions modal */
+._1W7zJMqqfOIlOV9PXVVYxz {
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+}
+
+/* Responsive adjustments for AI button */
+@media (max-width: 480px) {
+    .ai-enhance-btn {
+        width: 24px !important;
+        height: 24px !important;
+        font-size: 14px !important;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .ai-enhance-btn {
+        outline-width: 2px !important;
+    }
+    
+    .ai-message {
+        border-width: 2px !important;
+        font-weight: 500 !important;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .ai-enhance-btn {
+        transition: none !important;
+    }
+    
+    .ai-enhance-btn:hover {
+        transform: none !important;
+    }
+    
+    .ai-enhance-btn.loading {
+        animation: none !important;
+    }
+    
+    .ai-enhance-btn.success {
+        animation: none !important;
+    }
+    
+    .ai-message {
+        animation: none !important;
+    }
+    
+    @keyframes ai-button-spin {
+        0%, 100% { transform: rotate(0deg); }
+    }
+    
+    @keyframes ai-button-pulse {
+        0%, 100% { opacity: 0.5; }
+    }
+    
+    @keyframes ai-button-success-pulse {
+        0%, 100% { transform: scale(1); }
+    }
+}

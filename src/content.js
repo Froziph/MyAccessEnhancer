@@ -1,5 +1,344 @@
 // MyAccess Package approvers Tab Enhanced - Chrome Extension Version
 
+// ========================================
+// AI PROMPTS CONFIGURATION
+// ========================================
+
+const AI_PROMPTS = {
+    // Default prompt for business justification enhancement
+    ENHANCE_BUSINESS_JUSTIFICATION: {
+        systemPrompt: `You are a SimCorp access request specialist. Transform business justifications into the proper SimCorp format using the required structure.
+
+REQUIRED FORMAT:
+As a (role and team), I need access so that (justification). I have read the policies and understand the implications of having such access.
+
+GOOD EXAMPLES FROM DOCUMENTATION:
+- As an SRE team operator, I need access so that I can monitor system health (Ticket #12345). I have read the policies and understand the implications of having such access.
+- As an SRE team reader for the DEP system, I need access so that I can review logs and reports. I have read the policies and understand the implications of having such access.
+- As a DevOps Engineer of Straw Hats, I need access so that I can resolve an issue related to KV password change (Alert #2376, Ticket #54321). I have read the policies and understand the implications of having such access.
+- As a Product Owner of Cockpit, I need access so I will be the new approver for DEP packages, as approved by my manager (manager's initials). I have read the policies and understand the implications of having such access.
+
+IMPORTANT: Do not include quotation marks around the output.
+
+RULES:
+- NEVER add information not in the original text
+- Use only details provided in the original request
+- If role/team is unclear from context, use generic terms like "team member" or "engineer"
+- Preserve all ticket numbers, system names, and specific details exactly
+- Always end with the required policy acknowledgment`,
+
+        userPromptTemplate: `Transform this into proper SimCorp business justification format. Use only the information provided - do not add details not mentioned:
+
+Original: "{originalText}"
+
+SimCorp format:`,
+
+        maxTokens: 300,
+        model: "gpt-4o-mini"
+    },
+
+    // Alternative prompt for minimal SimCorp format
+    ENHANCE_CONCISE: {
+        systemPrompt: `You are a SimCorp specialist creating minimal but compliant justifications.
+
+FORMAT: As a (role), I need access so that (essential purpose). I have read the policies and understand the implications of having such access.
+
+RULES:
+- Use the shortest possible language while meeting requirements
+- NEVER add information not provided
+- Keep to absolute essentials only
+- Preserve ticket numbers and system names exactly
+- Do not include quotation marks around the output`,
+
+        userPromptTemplate: `Create the most concise SimCorp format justification using only the provided information:
+
+"{originalText}"
+
+Minimal SimCorp format:`,
+
+        maxTokens: 500,
+        model: "gpt-4o-mini"
+    },
+
+    // Alternative prompt for detailed SimCorp format
+    ENHANCE_DETAILED: {
+        systemPrompt: `You are a SimCorp specialist creating detailed but appropriate justifications.
+
+FORMAT: As a (role and team), I need access so that (detailed justification with context). I have read the policies and understand the implications of having such access.
+
+APPROACH:
+- Include role and team if mentioned
+- Provide clear context for the access need
+- Reference tickets, alerts, or user stories if provided
+- Answer: Why this user? Why this access? What purpose?
+- NEVER add information not in original text
+- Keep to one well-structured sentence plus policy statement
+- Do not include quotation marks around the output`,
+
+        userPromptTemplate: `Create a detailed SimCorp format justification with appropriate context using only the provided information:
+
+"{originalText}"
+
+Detailed SimCorp format:`,
+
+        maxTokens: 1500,
+        model: "gpt-4o-mini"
+    }
+};
+
+// ========================================
+// AI ENHANCEMENT FUNCTIONALITY
+// ========================================
+
+// Check if extension context is valid
+function isExtensionContextValid() {
+    try {
+        return !!(chrome && chrome.runtime && chrome.runtime.id);
+    } catch (error) {
+        return false;
+    }
+}
+
+// Get OpenAI API key from storage
+async function getOpenAIKey() {
+    try {
+        // Check if extension context is valid
+        if (!isExtensionContextValid()) {
+            return null;
+        }
+        const result = await chrome.storage.sync.get('openai_api_key');
+        return result.openai_api_key || null;
+    } catch (error) {
+        // Extension context invalidated or other error
+        return null;
+    }
+}
+
+// Check if API key is configured
+async function hasOpenAIKey() {
+    const key = await getOpenAIKey();
+    return key && key.trim().length > 0;
+}
+
+// Enhance business justification using OpenAI API
+async function enhanceBusinessJustification(text, apiKey) {
+    if (!text || !text.trim()) {
+        throw new Error('No text provided');
+    }
+
+    if (!apiKey) {
+        throw new Error('OpenAI API key not configured');
+    }
+
+    const prompt = AI_PROMPTS.ENHANCE_BUSINESS_JUSTIFICATION;
+    
+    try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: prompt.model,
+                messages: [
+                    {
+                        role: 'system',
+                        content: prompt.systemPrompt
+                    },
+                    {
+                        role: 'user',
+                        content: prompt.userPromptTemplate.replace('{originalText}', text)
+                    }
+                ],
+                max_tokens: prompt.maxTokens,
+                temperature: 0.3
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(`OpenAI API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
+        }
+
+        const data = await response.json();
+        
+        if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+            throw new Error('Invalid response from OpenAI API');
+        }
+
+        return data.choices[0].message.content.trim();
+
+    } catch (error) {
+        if (error.message.includes('fetch')) {
+            throw new Error('Network error: Please check your internet connection');
+        }
+        throw error;
+    }
+}
+
+// Handle AI enhancement process
+async function handleAIEnhancement(textarea) {
+    const apiKey = await getOpenAIKey();
+    if (!apiKey) {
+        showAIMessage('OpenAI API key not configured. Please set it in the extension settings.', 'error');
+        return;
+    }
+
+    const originalText = textarea.value.trim();
+    if (!originalText) {
+        showAIMessage('Please enter some text first.', 'error');
+        return;
+    }
+
+    // Find or create AI button to show loading state
+    const aiButton = document.querySelector('.ai-enhance-btn');
+    if (aiButton) {
+        aiButton.disabled = true;
+        aiButton.classList.add('loading');
+    }
+
+    try {
+        const enhancedText = await enhanceBusinessJustification(originalText, apiKey);
+        textarea.value = enhancedText;
+        
+        // Trigger input event to ensure form validation updates
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        
+        // Show checkmark for success
+        if (aiButton) {
+            aiButton.classList.remove('loading');
+            aiButton.classList.add('success');
+            aiButton.innerHTML = '✓';
+            
+            // Reset to sparkles after 2 seconds
+            setTimeout(() => {
+                aiButton.classList.remove('success');
+                aiButton.innerHTML = '✨';
+            }, 2000);
+        }
+        
+    } catch (error) {
+        showAIMessage(`Enhancement failed: ${error.message}`, 'error');
+    } finally {
+        if (aiButton) {
+            aiButton.disabled = false;
+            aiButton.classList.remove('loading');
+        }
+    }
+}
+
+// Show AI operation message
+function showAIMessage(message, type = 'info') {
+    // Remove existing message
+    const existingMessage = document.querySelector('.ai-message');
+    if (existingMessage) {
+        existingMessage.remove();
+    }
+
+    // Create new message
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `ai-message ai-message-${type}`;
+    messageDiv.textContent = message;
+
+    // Find the textarea container to position the message
+    const textareaContainer = document.querySelector('.ms-TextField.is-required.ms-TextField--multiline');
+    if (textareaContainer) {
+        textareaContainer.insertAdjacentElement('afterend', messageDiv);
+        
+        // Auto-remove after 4 seconds
+        setTimeout(() => {
+            if (messageDiv.parentNode) {
+                messageDiv.remove();
+            }
+        }, 4000);
+    }
+}
+
+// Add AI enhancement button to Additional Questions modal
+async function addAIButtonToBusinessJustification() {
+    try {
+        // Check if extension context is valid
+        if (!isExtensionContextValid()) {
+            return;
+        }
+        
+        // Check if API key is configured
+        const hasKey = await hasOpenAIKey();
+        if (!hasKey) {
+            return; // Don't show button if no API key
+        }
+    } catch (error) {
+        // Extension context issues, silently return
+        return;
+    }
+
+    // Look for the business justification textarea (dynamic ID)
+    const textarea = document.querySelector('.ms-TextField.is-required.ms-TextField--multiline textarea');
+    if (!textarea) {
+        return;
+    }
+
+    // Check if button already exists
+    if (document.querySelector('.ai-enhance-btn')) {
+        return;
+    }
+
+    // Find the submit button container
+    const submitContainer = document.querySelector('._1W7zJMqqfOIlOV9PXVVYxz');
+    if (!submitContainer) {
+        return;
+    }
+
+    // Create AI enhancement button
+    const aiButton = document.createElement('button');
+    aiButton.type = 'button';
+    aiButton.className = 'ai-enhance-btn';
+    aiButton.innerHTML = '✨';
+    aiButton.title = 'Enhance business justification using AI';
+    aiButton.setAttribute('data-is-focusable', 'true');
+
+    // Add click handler
+    aiButton.addEventListener('click', () => handleAIEnhancement(textarea));
+
+    // Insert button next to submit button
+    const submitButton = submitContainer.querySelector('.ms-Button--primary');
+    if (submitButton) {
+        submitButton.insertAdjacentElement('beforebegin', aiButton);
+    } else {
+        submitContainer.appendChild(aiButton);
+    }
+}
+
+// Listen for API key updates from popup
+if (chrome?.runtime?.onMessage) {
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        try {
+            if (message.type === 'API_KEY_UPDATED') {
+                // Re-check for Additional Questions modal and update AI button visibility
+                setTimeout(() => {
+                    const modal = document.querySelector('.ms-Modal-scrollableContent');
+                    if (modal && modal.textContent.includes('Additional questions')) {
+                        // Remove existing button if any
+                        const existingButton = document.querySelector('.ai-enhance-btn');
+                        if (existingButton) {
+                            existingButton.remove();
+                        }
+                        // Re-add button based on new key status
+                        addAIButtonToBusinessJustification();
+                    }
+                }, 100);
+            }
+        } catch (error) {
+            // Extension context invalidated, ignore
+        }
+    });
+}
+
+// ========================================
+// AUTHENTICATION
+// ========================================
+
 function getAuthToken() {
     for (let i = 0; i < window.sessionStorage.length; i++) {
         const key = window.sessionStorage.key(i);
@@ -1018,6 +1357,23 @@ function watchForModal() {
                     });
                 }
             }
+
+            // Check for Additional Questions modal
+            const additionalQuestionsTitle = modal.querySelector('h3[title="Additional questions"]');
+            if (additionalQuestionsTitle) {
+                // Attempt to add AI button to business justification field
+                setTimeout(addAIButtonToBusinessJustification, 100);
+                setTimeout(addAIButtonToBusinessJustification, 300);
+                setTimeout(addAIButtonToBusinessJustification, 600);
+            } else {
+                // Also check for modal content that might contain "Additional questions"
+                const hasAdditionalQuestions = modal.textContent.includes('Additional questions');
+                if (hasAdditionalQuestions) {
+                    setTimeout(addAIButtonToBusinessJustification, 100);
+                    setTimeout(addAIButtonToBusinessJustification, 300);
+                    setTimeout(addAIButtonToBusinessJustification, 600);
+                }
+            }
         }
         
         // Check for access request panel
@@ -1080,6 +1436,8 @@ function init() {
         addApproversToAccessRequestPanel();
     }, 3000);
     
+    // Add global function for manual testing
+    window.addAIButton = addAIButtonToBusinessJustification;
 }
 
 if (document.readyState === 'loading') {

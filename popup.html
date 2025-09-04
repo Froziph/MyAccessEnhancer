@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyAccess Enhanced Settings</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="popup-container">
+        <div class="header">
+            <h2>MyAccess Enhanced</h2>
+            <div class="subtitle">AI Business Justification Settings</div>
+        </div>
+        
+        <div class="content">
+            <div class="setting-group">
+                <label for="openai-key" class="setting-label">
+                    OpenAI API Key
+                    <span class="required">*</span>
+                </label>
+                <div class="input-group">
+                    <input 
+                        type="password" 
+                        id="openai-key" 
+                        placeholder="sk-..." 
+                        class="setting-input"
+                    >
+                    <button id="toggle-visibility" class="visibility-btn" type="button" aria-label="Toggle password visibility">
+                        👁️
+                    </button>
+                </div>
+                <div class="setting-description">
+                    Enter your OpenAI API key to enable AI-powered business justification enhancement. 
+                    Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a>.
+                </div>
+            </div>
+
+            <div class="status-group">
+                <div id="status-indicator" class="status-indicator">
+                    <div class="status-dot"></div>
+                    <span id="status-text">API key not configured</span>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button id="save-btn" class="btn btn-primary">Save Settings</button>
+                <button id="clear-btn" class="btn btn-secondary">Clear Key</button>
+            </div>
+
+            <div id="message" class="message hidden"></div>
+        </div>
+
+        <div class="footer">
+            <div class="info-text">
+                The AI button will appear next to the "Submit request" button in Additional Questions modals when an API key is configured.
+            </div>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
