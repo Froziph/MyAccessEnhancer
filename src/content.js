@@ -1,18 +1,6 @@
 // MyAccess Package approvers Tab Enhanced - Chrome Extension Version
-console.log('[MyAccess Enhanced] Chrome Extension loaded');
 
-// ========================================
-// UI INITIALIZATION
-// ========================================
-
-
-// ========================================
-// AUTHENTICATION
-// ========================================
-
-// Get auth token for elm.iga.azure.com API calls
 function getAuthToken() {
-    // Look for react-auth session tokens
     for (let i = 0; i < window.sessionStorage.length; i++) {
         const key = window.sessionStorage.key(i);
         if (!key) continue;
@@ -28,7 +16,6 @@ function getAuthToken() {
                         continue;
                     }
                     
-                    // Look for elm.iga.azure.com tokens first
                     if (parsed && parsed.accessTokens) {
                         for (const subKey in parsed.accessTokens) {
                             if (subKey.includes('elm.iga.azure.com')) {
@@ -40,7 +27,6 @@ function getAuthToken() {
                         }
                     }
                     
-                    // Check for direct access_token property
                     if (parsed && parsed.access_token) {
                         return parsed.access_token;
                     }
@@ -50,7 +36,6 @@ function getAuthToken() {
             }
         }
         
-        // Check for MSAL tokens (fallback)
         if (key.includes('msal') && (key.includes('accesstoken') || key.includes('idtoken'))) {
             try {
                 const value = window.sessionStorage.getItem(key);
@@ -66,7 +51,6 @@ function getAuthToken() {
         }
     }
     
-    // Last resort: check localStorage for MSAL tokens
     for (let key in localStorage) {
         if (key.includes('msal') && (key.includes('accesstoken') || key.includes('idtoken'))) {
             try {
@@ -81,7 +65,6 @@ function getAuthToken() {
     return null;
 }
 
-// Get Microsoft Graph API token
 function getGraphToken() {
     // Look for react-auth session tokens with graph.microsoft.com
     for (let i = 0; i < window.sessionStorage.length; i++) {
@@ -99,7 +82,6 @@ function getGraphToken() {
                         continue;
                     }
                     
-                    // Look specifically for graph.microsoft.com tokens
                     if (parsed && parsed.accessTokens) {
                         for (const subKey in parsed.accessTokens) {
                             if (subKey.includes('graph.microsoft.com')) {
@@ -117,7 +99,6 @@ function getGraphToken() {
         }
     }
     
-    // Fallback: try MSAL tokens that might work with Graph
     for (let key in localStorage) {
         if (key.includes('msal') && key.includes('accesstoken')) {
             try {
@@ -140,11 +121,6 @@ function getGraphToken() {
     return null;
 }
 
-// ========================================
-// API FUNCTIONS
-// ========================================
-
-// Lookup package GUID and metadata by display name
 async function lookupPackageGUID(displayName, context = 'general') {
     const token = getAuthToken();
     if (!token) {
@@ -201,7 +177,6 @@ async function lookupPackageGUID(displayName, context = 'general') {
             };
         }
 
-        // Look for exact match first
         const exactMatch = data.value.find(pkg => pkg.displayName === displayName);
         if (exactMatch) {
             return {
@@ -212,7 +187,6 @@ async function lookupPackageGUID(displayName, context = 'general') {
             };
         }
 
-        // Return first match if no exact match
         return {
             found: true,
             package: data.value[0],
@@ -225,7 +199,6 @@ async function lookupPackageGUID(displayName, context = 'general') {
     }
 }
 
-// Get detailed package metadata by GUID
 async function getPackageDetails(packageGuid) {
     const token = getAuthToken();
     if (!token) {
@@ -257,7 +230,6 @@ async function getPackageDetails(packageGuid) {
     }
 }
 
-// Get assignment policies for a package GUID
 async function getAssignmentPolicies(packageGuid) {
     const token = getAuthToken();
     if (!token) {
@@ -289,7 +261,6 @@ async function getAssignmentPolicies(packageGuid) {
     }
 }
 
-// Get members of a group from Microsoft Graph API
 async function getGroupMembers(groupId) {
     const graphToken = getGraphToken();
     const fallbackToken = getAuthToken();
@@ -298,7 +269,6 @@ async function getGroupMembers(groupId) {
         return { error: 'No authentication token found', members: [] };
     }
 
-    // Try Graph-specific token first, then fallback token
     const tokensToTry = [
         { token: graphToken, type: 'Graph-specific' },
         { token: fallbackToken, type: 'Fallback' }
@@ -339,11 +309,6 @@ async function getGroupMembers(groupId) {
     };
 }
 
-// ========================================
-// UTILITY FUNCTIONS
-// ========================================
-
-// Create reusable collapsible section HTML
 function createCollapsibleSection(sectionId, contentId, title, subtitle = 'Show/hide details') {
     return `
         <div class="ms-List-cell" data-list-index="0" style="margin-bottom: 8px;">
@@ -366,10 +331,8 @@ function createCollapsibleSection(sectionId, contentId, title, subtitle = 'Show/
     `;
 }
 
-// Global event delegation handler for collapsible sections
 const collapsibleHandlers = new Map();
 
-// Create reusable click handler for collapsible sections
 function createCollapsibleClickHandler(sectionSelector, contentId, loadingMessage, contentLoader) {
     let contentLoaded = false;
     
@@ -386,14 +349,12 @@ function createCollapsibleClickHandler(sectionSelector, contentId, loadingMessag
         const sectionHeader = document.querySelector(`.collapsible-section[data-section="${sectionSelector}"]`);
         
         if (!sectionHeader) {
-            console.log(`[MyAccess Enhanced] Section header not found for: ${sectionSelector}`);
             return false;
         }
         
         // Mark as ready for delegation
         sectionHeader.setAttribute('data-handler-ready', 'true');
         
-        console.log(`[MyAccess Enhanced] Handler ready for: ${sectionSelector}`);
         return true;
     };
     
@@ -411,7 +372,6 @@ function createCollapsibleClickHandler(sectionSelector, contentId, loadingMessag
     attemptSetup();
 }
 
-// Global event delegation for all collapsible sections
 document.addEventListener('click', async function(e) {
     const target = e.target.closest('.collapsible-section[data-section]');
     if (!target || target.getAttribute('data-handler-ready') !== 'true') {
@@ -425,36 +385,29 @@ document.addEventListener('click', async function(e) {
     const handlerConfig = collapsibleHandlers.get(sectionSelector);
     
     if (!handlerConfig) {
-        console.log(`[MyAccess Enhanced] No handler config found for: ${sectionSelector}`);
         return;
     }
-    
-    console.log(`[MyAccess Enhanced] Click handler triggered for: ${sectionSelector}`);
     
     const content = document.getElementById(handlerConfig.contentId);
     const ariaLive = target.querySelector('[aria-live="assertive"]');
     
     if (!content) {
-        console.log(`[MyAccess Enhanced] Content area not found: ${handlerConfig.contentId}`);
         return;
     }
     
     const expandedAttr = content.getAttribute('data-expanded');
     const isExpanded = expandedAttr === 'true';
-    console.log(`[MyAccess Enhanced] Current state - expanded attr: ${expandedAttr}, isExpanded: ${isExpanded}`);
     
     if (isExpanded) {
         // Collapse
         content.style.display = 'none';
         content.setAttribute('data-expanded', 'false');
         if (ariaLive) ariaLive.textContent = 'Collapsed';
-        console.log(`[MyAccess Enhanced] Collapsed: ${sectionSelector}`);
     } else {
         // Expand
         content.style.display = 'block';
         content.setAttribute('data-expanded', 'true');
         if (ariaLive) ariaLive.textContent = 'Expanded';
-        console.log(`[MyAccess Enhanced] Expanded: ${sectionSelector}`);
         
         // Load content only when expanding for the first time
         if (!handlerConfig.contentLoaded) {
@@ -479,7 +432,6 @@ document.addEventListener('click', async function(e) {
                 content.appendChild(loadedContent);
                 
             } catch (error) {
-                console.error(`[MyAccess Enhanced] Error loading content for ${sectionSelector}:`, error);
                 content.innerHTML = `
                     <div class="error-message">
                         <strong>Error loading content:</strong><br>
@@ -491,7 +443,6 @@ document.addEventListener('click', async function(e) {
     }
 });
 
-// Global keyboard support for collapsible sections
 document.addEventListener('keydown', function(e) {
     if (e.key !== 'Enter' && e.key !== ' ') {
         return;
@@ -507,7 +458,6 @@ document.addEventListener('keydown', function(e) {
 });
 
 
-// Generate initials from a name
 function generateInitials(givenName, surname, displayName) {
     if (givenName && surname) {
         return (givenName.charAt(0) + surname.charAt(0)).toUpperCase();
@@ -522,7 +472,6 @@ function generateInitials(givenName, surname, displayName) {
     return '??';
 }
 
-// Create a member card for a user
 function createMemberCard(member) {
     if (member['@odata.type'] !== '#microsoft.graph.user') {
         return '';
@@ -545,7 +494,6 @@ function createMemberCard(member) {
     `;
 }
 
-// Create member grid HTML from members array
 function createMemberGrid(members) {
     if (!members || members.length === 0) {
         return '';
@@ -560,7 +508,6 @@ function createMemberGrid(members) {
     `;
 }
 
-// Extract risk level from display name
 function extractRiskLevel(displayName) {
     const riskMatch = displayName.match(/\[(\w+)\]/i);
     if (riskMatch) {
@@ -569,7 +516,6 @@ function extractRiskLevel(displayName) {
     return 'unknown';
 }
 
-// Format date for display
 function formatDate(dateString) {
     if (!dateString) return 'Not available';
     try {
@@ -586,15 +532,9 @@ function formatDate(dateString) {
     }
 }
 
-// ========================================
-// PACKAGE TRACKING
-// ========================================
-
-// Store the current package ID when a row is clicked
 let currentPackageId = null;
 let currentPackageName = null;
 
-// Extract package name from current modal
 function getCurrentPackageName() {
     // Try to extract from the modal title
     const modalTitle = document.querySelector('.ms-Modal h3, .ms-Dialog-title, [data-automation-id="DetailsPanelHeaderText"]');
@@ -610,7 +550,6 @@ function getCurrentPackageName() {
     return null;
 }
 
-// Intercept clicks on package rows to capture package info
 function interceptPackageClicks() {
     document.addEventListener('click', function(e) {
         // Check if click is on a Request button or package row
@@ -628,7 +567,6 @@ function interceptPackageClicks() {
     }, true);
 }
 
-// Copy text to clipboard
 function copyToClipboard(text) {
     navigator.clipboard.writeText(text).catch(() => {
         // Fallback for older browsers
@@ -641,11 +579,6 @@ function copyToClipboard(text) {
     });
 }
 
-// ========================================
-// UI CONTENT CREATION
-// ========================================
-
-// Create simple requestors content for Request details tab (non-collapsible)
 async function createSimpleRequestorsContent() {
     const container = document.createElement('div');
     container.className = 'simple-requestors-content';
@@ -744,7 +677,6 @@ async function createSimpleRequestorsContent() {
     return container;
 }
 
-// Create simple approvers content for Request details tab (non-collapsible)
 async function createSimpleApproversContent() {
     const container = document.createElement('div');
     container.className = 'simple-approvers-content';
@@ -910,11 +842,6 @@ async function createSimpleApproversContent() {
 }
 
 
-// ========================================
-// TAB MANAGEMENT
-// ========================================
-
-// Add collapsible approvers content to Request details tab
 function addApproversToRequestDetailsTab() {
     // Look for the Request details tab panel content
     const tabPanel = document.querySelector('[role="tabpanel"]');
@@ -927,16 +854,11 @@ function addApproversToRequestDetailsTab() {
     // Check if we already added approvers
     if (tabPanel.querySelector('[data-request-details-approvers-section]')) return;
     
-    console.log('[MyAccess Enhanced] Request details tab found, attempting to add collapsible approvers...');
-    
     // Extract package name from current package name
     const packageName = getCurrentPackageName();
     if (!packageName) {
-        console.log('[MyAccess Enhanced] Could not extract package name from request details tab');
         return;
     }
-    
-    console.log('[MyAccess Enhanced] Extracted package name for request details:', packageName);
     
     // Store the package name for createApproversContent
     currentPackageName = packageName;
@@ -944,7 +866,6 @@ function addApproversToRequestDetailsTab() {
     // Find the container with the share button section
     const shareContainer = shareSection.closest('div');
     if (!shareContainer) {
-        console.log('[MyAccess Enhanced] Could not find share container');
         return;
     }
     
@@ -983,9 +904,6 @@ function addApproversToRequestDetailsTab() {
     }, 50);
 }
 
-// [REMOVED] addApproversToResourcesTab function - replaced with collapsible implementation
-
-// Add collapsible approver information to access request panel
 function addApproversToAccessRequestPanel() {
     // Look for the access request panel
     const accessRequestPanel = document.querySelector('.ms-Panel-content');
@@ -998,7 +916,6 @@ function addApproversToAccessRequestPanel() {
     // Check if we already added approvers section
     if (accessRequestPanel.querySelector('[data-access-request-approvers-section]')) return;
     
-    console.log('[MyAccess Enhanced] Access request panel found, attempting to add collapsible approvers...');
     
     // Extract package name from "You submitted a request for" text
     let packageName = null;
@@ -1018,11 +935,8 @@ function addApproversToAccessRequestPanel() {
     }
     
     if (!packageName) {
-        console.log('[MyAccess Enhanced] Could not extract package name from access request, using fallback');
         packageName = 'Unknown Package';
     }
-    
-    console.log('[MyAccess Enhanced] Extracted package name:', packageName);
     
     // Store the package name for createSimpleApproversContent
     currentPackageName = packageName;
@@ -1063,7 +977,6 @@ function addApproversToAccessRequestPanel() {
 }
 
 
-// Monitor for modal opening
 function watchForModal() {
     let lastCheckTime = 0;
     let lastPanelContent = '';
@@ -1122,7 +1035,6 @@ function watchForModal() {
                         currentContent.includes('Request history') ||
                         currentContent.length > 100) {
                         
-                        console.log('[MyAccess Enhanced] Found access request panel, attempting to add button...');
                         addApproversToAccessRequestPanel();
                     }
                 }
@@ -1153,11 +1065,6 @@ function watchForModal() {
     setInterval(checkForModal, 100);
 }
 
-// ========================================
-// INITIALIZATION
-// ========================================
-
-// Initialize the script
 function init() {
     interceptPackageClicks();
     watchForModal();
@@ -1173,46 +1080,8 @@ function init() {
         addApproversToAccessRequestPanel();
     }, 3000);
     
-    // Debug helpers
-    window.debugRequestDetailsTab = () => {
-        console.log('=== Debug Request Details Tab ===');
-        const tabPanel = document.querySelector('[role="tabpanel"]');
-        console.log('Tab panel found:', !!tabPanel);
-        
-        const shareSection = tabPanel ? tabPanel.querySelector('button[id="share-button-id"]') : null;
-        console.log('Share button found:', !!shareSection);
-        
-        const shareContainer = shareSection ? shareSection.closest('div') : null;
-        console.log('Share container found:', !!shareContainer);
-        
-        const packageName = getCurrentPackageName();
-        console.log('Package name:', packageName);
-        
-        addApproversToRequestDetailsTab();
-    };
-    window.debugAccessRequestPanel = () => {
-        console.log('=== Debug Access Request Panel ===');
-        const headerElement = document.querySelector('.ms-Panel-headerText');
-        console.log('Header found:', !!headerElement);
-        console.log('Header text:', headerElement ? headerElement.textContent : 'N/A');
-        
-        const panel = document.querySelector('.ms-Panel-content');
-        console.log('Panel found:', !!panel);
-        if (panel) {
-            console.log('Panel content includes "You submitted a request for":', panel.textContent.includes('You submitted a request for'));
-            console.log('Panel text content:', panel.textContent.substring(0, 300));
-            
-            const activityTexts = panel.querySelectorAll('.ms-ActivityItem-activityText');
-            console.log('Activity texts found:', activityTexts.length);
-            activityTexts.forEach((text, i) => {
-                console.log(`Activity ${i}:`, text.textContent);
-            });
-        }
-        addApproversToAccessRequestPanel();
-    };
 }
 
-// Start when page is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
 } else {

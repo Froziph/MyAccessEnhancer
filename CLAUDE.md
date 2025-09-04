@@ -68,8 +68,7 @@ The extension follows Chrome Extension Manifest V3 architecture with a pure cont
 
 ### Testing the Features
 1. Navigate to a package detail page and look for "Approvers" tab
-2. **Debug Commands**: Open console and run debugging functions:
-   - `window.debugApproversTab()` - Force add approvers tab
+2. **Debug Commands**: Debug functions have been removed from production code
 
 ### Key Dependencies
 - Chrome Extension APIs: storage, identity, scripting, activeTab, cookies
