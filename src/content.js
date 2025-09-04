@@ -214,24 +214,24 @@ function showChatModal() {
                     <div class="ai-chat-messages" id="ai-chat-messages">
                         <!-- Welcome message -->
                         <div class="ai-welcome-card">
-                            <div class="ai-welcome-icon">✨</div>
+                            <div class="ai-welcome-icon">🤖</div>
                             <div class="ai-welcome-content">
                                 <h3>Welcome! I'm here to help you navigate access packages.</h3>
                                 <div class="ai-capabilities">
                                     <div class="ai-capability">
-                                        <span class="ai-capability-icon">🎯</span>
+                                        <span class="ai-capability-icon">●</span>
                                         <span>Access package types & risk levels</span>
                                     </div>
                                     <div class="ai-capability">
-                                        <span class="ai-capability-icon">⚡</span>
+                                        <span class="ai-capability-icon">◆</span>
                                         <span>Approval workflows & permissions</span>
                                     </div>
                                     <div class="ai-capability">
-                                        <span class="ai-capability-icon">⏱️</span>
+                                        <span class="ai-capability-icon">◖</span>
                                         <span>Expiration policies & renewals</span>
                                     </div>
                                     <div class="ai-capability">
-                                        <span class="ai-capability-icon">🔒</span>
+                                        <span class="ai-capability-icon">◻</span>
                                         <span>Data classification patterns</span>
                                     </div>
                                 </div>
@@ -1004,7 +1004,7 @@ async function handleAIEnhancement(textarea) {
             // Reset to sparkles after 2 seconds
             setTimeout(() => {
                 aiButton.classList.remove('success');
-                aiButton.innerHTML = '✨';
+                aiButton.innerHTML = '✦';
             }, 2000);
         }
         
@@ -1084,7 +1084,7 @@ async function addAIButtonToBusinessJustification() {
     const aiButton = document.createElement('button');
     aiButton.type = 'button';
     aiButton.className = 'ai-enhance-btn';
-    aiButton.innerHTML = '✨';
+    aiButton.innerHTML = '✦';
     aiButton.title = 'Enhance business justification using AI';
     aiButton.setAttribute('data-is-focusable', 'true');
 
