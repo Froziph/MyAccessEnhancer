@@ -18,7 +18,14 @@
       "Read(/C:\\Users\\anls\\source\\repos\\MyAccessEnhancer\\src/**)",
       "Read(/C:\\Users\\anls\\source\\repos\\MyAccessEnhancer\\src/**)",
       "Read(/C:\\Users\\anls\\source\\repos\\MyAccessEnhancer\\src/**)",
-      "Read(/C:\\Users\\anls\\source\\repos\\MyAccessEnhancer\\src/**)"
+      "Read(/C:\\Users\\anls\\source\\repos\\MyAccessEnhancer\\src/**)",
+      "Read(/C:\\Users\\anls\\source\\repos\\MyAccessEnhancer\\src/**)",
+      "Read(/C:\\Users\\anls\\source\\repos\\MyAccessEnhancer\\src/**)",
+      "Read(/C:\\Users\\anls\\source\\repos\\MyAccessEnhancer\\src/**)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(node:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

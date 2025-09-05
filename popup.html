@@ -10,7 +10,7 @@
     <div class="popup-container">
         <div class="header">
             <h2>MyAccess Enhanced</h2>
-            <div class="subtitle">AI Business Justification Settings</div>
+            <div class="subtitle">AI Enhancement Settings</div>
         </div>
         
         <div class="content">
@@ -31,8 +31,27 @@
                     </button>
                 </div>
                 <div class="setting-description">
-                    Enter your OpenAI API key to enable AI-powered business justification enhancement. 
+                    Enter your OpenAI API key to enable AI-powered features including business justification enhancement and the access packages assistant. 
                     Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a>.
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <label for="openai-model" class="setting-label">
+                    OpenAI Model
+                </label>
+                <select id="openai-model" class="setting-select">
+                    <option value="gpt-4o-mini">GPT-4o Mini (Recommended) - Cheap & Fast</option>
+                    <option value="gpt-4o">GPT-4o - Best Quality</option>
+                    <option value="gpt-3.5-turbo">GPT-3.5 Turbo - Cheapest</option>
+                </select>
+                <div class="setting-description">
+                    Choose the AI model for all AI-powered features:
+                    <ul class="model-list">
+                        <li><strong>GPT-4o Mini:</strong> Best balance of quality and cost for most users</li>
+                        <li><strong>GPT-4o:</strong> Highest quality responses, higher cost</li>
+                        <li><strong>GPT-3.5 Turbo:</strong> Fastest and cheapest option</li>
+                    </ul>
                 </div>
             </div>
 
@@ -53,7 +72,7 @@
 
         <div class="footer">
             <div class="info-text">
-                The AI button will appear next to the "Submit request" button in Additional Questions modals when an API key is configured.
+                AI features will be available in the extension when an API key is configured, including the enhancement button in Additional Questions modals and the AI chat assistant.
             </div>
         </div>
     </div>

@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', async function() {
     const apiKeyInput = document.getElementById('openai-key');
+    const modelSelect = document.getElementById('openai-model');
     const saveBtn = document.getElementById('save-btn');
     const clearBtn = document.getElementById('clear-btn');
     const toggleVisibilityBtn = document.getElementById('toggle-visibility');
@@ -13,6 +14,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Save settings
     saveBtn.addEventListener('click', async function() {
         const apiKey = apiKeyInput.value.trim();
+        const selectedModel = modelSelect.value;
         
         if (!apiKey) {
             showMessage('Please enter an API key', 'error');
@@ -25,7 +27,10 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
 
         try {
-            await chrome.storage.sync.set({ 'openai_api_key': apiKey });
+            await chrome.storage.sync.set({ 
+                'openai_api_key': apiKey,
+                'openai_model': selectedModel
+            });
             await updateStatus();
             showMessage('Settings saved successfully!', 'success');
             
@@ -40,8 +45,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     clearBtn.addEventListener('click', async function() {
         if (confirm('Are you sure you want to clear your API key?')) {
             try {
-                await chrome.storage.sync.remove('openai_api_key');
+                await chrome.storage.sync.remove(['openai_api_key', 'openai_model']);
                 apiKeyInput.value = '';
+                modelSelect.value = 'gpt-4o-mini'; // Reset to default
                 await updateStatus();
                 showMessage('API key cleared', 'info');
                 
@@ -77,9 +83,15 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Load settings from storage
     async function loadSettings() {
         try {
-            const result = await chrome.storage.sync.get('openai_api_key');
+            const result = await chrome.storage.sync.get(['openai_api_key', 'openai_model']);
             if (result.openai_api_key) {
                 apiKeyInput.value = result.openai_api_key;
+            }
+            if (result.openai_model) {
+                modelSelect.value = result.openai_model;
+            } else {
+                // Default to gpt-4o-mini if no model is saved
+                modelSelect.value = 'gpt-4o-mini';
             }
             await updateStatus();
         } catch (error) {

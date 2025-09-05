@@ -33,8 +33,7 @@ Original: "{originalText}"
 
 SimCorp format:`,
 
-        maxTokens: 300,
-        model: "gpt-4o-mini"
+        maxTokens: 300
     },
 
     // Alternative prompt for minimal SimCorp format
@@ -56,8 +55,7 @@ RULES:
 
 Minimal SimCorp format:`,
 
-        maxTokens: 500,
-        model: "gpt-4o-mini"
+        maxTokens: 500
     },
 
     // Alternative prompt for detailed SimCorp format
@@ -81,8 +79,7 @@ APPROACH:
 
 Detailed SimCorp format:`,
 
-        maxTokens: 1500,
-        model: "gpt-4o-mini"
+        maxTokens: 1500
     },
 
     // Access Packages Documentation Assistant
@@ -163,7 +160,6 @@ Replace [SystemName] with actual system name if provided by user. Always be help
         userPromptTemplate: `{userQuestion}`,
 
         maxTokens: 800,
-        model: "gpt-4o-mini",
         temperature: 0.7
     }
 };
@@ -428,6 +424,7 @@ const responseCache = new Map([
 // Query the chat assistant with conversation context and caching
 async function queryChatAssistant(userQuestion, apiKey) {
     const prompt = AI_PROMPTS.ACCESS_PACKAGES_ASSISTANT;
+    const selectedModel = await getOpenAIModel();
     
     // Check cache for common/exact queries
     const cacheKey = userQuestion.toLowerCase().trim();
@@ -465,7 +462,7 @@ async function queryChatAssistant(userQuestion, apiKey) {
                 'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({
-                model: prompt.model,
+                model: selectedModel,
                 messages: messages,
                 max_tokens: prompt.maxTokens,
                 temperature: prompt.temperature || 0.7,
@@ -547,6 +544,7 @@ function detectPageContext() {
 // Enhanced query with simulated streaming for better UX
 async function queryChatAssistantWithStreaming(userQuestion, apiKey, typingId) {
     const prompt = AI_PROMPTS.ACCESS_PACKAGES_ASSISTANT;
+    const selectedModel = await getOpenAIModel();
     
     // Add page context to help AI understand what user is looking at
     const pageContext = detectPageContext();
@@ -598,7 +596,7 @@ async function queryChatAssistantWithStreaming(userQuestion, apiKey, typingId) {
                 'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({
-                model: prompt.model,
+                model: selectedModel,
                 messages: messages,
                 max_tokens: prompt.maxTokens,
                 temperature: prompt.temperature || 0.7
@@ -840,10 +838,9 @@ async function addAIChatButton() {
         return;
     }
 
-    // Check if button already exists
-    if (document.querySelector('.ai-chat-button')) {
-        return;
-    }
+    // Remove any existing buttons first to prevent duplicates
+    const existingButtons = document.querySelectorAll('.ai-chat-button');
+    existingButtons.forEach(button => button.remove());
 
     // Find the help button to insert after it
     const helpButton = document.querySelector('button[title="Help"]');
@@ -876,6 +873,35 @@ async function addAIChatButton() {
     helpButton.insertAdjacentElement('afterend', aiChatButton);
 }
 
+// Update chat button visibility based on API key availability
+async function updateChatButtonVisibility() {
+    try {
+        // Check if extension context is valid
+        if (!isExtensionContextValid()) {
+            return;
+        }
+        
+        const hasKey = await hasOpenAIKey();
+        const existingButtons = document.querySelectorAll('.ai-chat-button');
+        
+        if (hasKey) {
+            // If we have a key and no button, or multiple buttons exist, refresh the button
+            if (existingButtons.length === 0 || existingButtons.length > 1) {
+                // Remove all existing buttons to prevent duplicates
+                existingButtons.forEach(button => button.remove());
+                // Add a single new button
+                addAIChatButton();
+            }
+        } else {
+            // Remove all buttons if we have no key
+            existingButtons.forEach(button => button.remove());
+        }
+    } catch (error) {
+        // Extension context issues, silently return
+        return;
+    }
+}
+
 // ========================================
 // AI ENHANCEMENT FUNCTIONALITY
 // ========================================
@@ -904,6 +930,21 @@ async function getOpenAIKey() {
     }
 }
 
+// Get selected OpenAI model from storage
+async function getOpenAIModel() {
+    try {
+        // Check if extension context is valid
+        if (!isExtensionContextValid()) {
+            return 'gpt-4o-mini'; // Default fallback
+        }
+        const result = await chrome.storage.sync.get('openai_model');
+        return result.openai_model || 'gpt-4o-mini'; // Default to gpt-4o-mini if not set
+    } catch (error) {
+        // Extension context invalidated or other error, return default
+        return 'gpt-4o-mini';
+    }
+}
+
 // Check if API key is configured
 async function hasOpenAIKey() {
     const key = await getOpenAIKey();
@@ -921,6 +962,7 @@ async function enhanceBusinessJustification(text, apiKey) {
     }
 
     const prompt = AI_PROMPTS.ENHANCE_BUSINESS_JUSTIFICATION;
+    const selectedModel = await getOpenAIModel();
     
     try {
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -930,7 +972,7 @@ async function enhanceBusinessJustification(text, apiKey) {
                 'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({
-                model: prompt.model,
+                model: selectedModel,
                 messages: [
                     {
                         role: 'system',
@@ -1063,22 +1105,32 @@ async function addAIButtonToBusinessJustification() {
         return;
     }
 
-    // Look for the business justification textarea (dynamic ID)
-    const textarea = document.querySelector('.ms-TextField.is-required.ms-TextField--multiline textarea');
-    if (!textarea) {
-        return;
-    }
-
     // Check if button already exists
     if (document.querySelector('.ai-enhance-btn')) {
         return;
     }
 
-    // Find the submit button container
-    const submitContainer = document.querySelector('._1W7zJMqqfOIlOV9PXVVYxz');
-    if (!submitContainer) {
+    // Look for Additional questions modal and business justification textarea
+    const additionalQuestionsModal = document.querySelector('h3[title="Additional questions"]');
+    if (!additionalQuestionsModal) {
         return;
     }
+
+    // Look for the business justification textarea using multiple selectors
+    const textarea = document.querySelector('textarea[aria-labelledby*="TextFieldLabel"]') ||
+                    document.querySelector('textarea[id*="TextField"]') ||
+                    document.querySelector('.ms-TextField--multiline textarea');
+    if (!textarea) {
+        return;
+    }
+
+    // Find the submit button container - look for the submit button and get its parent
+    const submitButton = document.querySelector('button[aria-label="Submit request"]');
+    if (!submitButton) {
+        return;
+    }
+    
+    const submitContainer = submitButton.parentElement;
 
     // Create AI enhancement button
     const aiButton = document.createElement('button');
@@ -1092,12 +1144,61 @@ async function addAIButtonToBusinessJustification() {
     aiButton.addEventListener('click', () => handleAIEnhancement(textarea));
 
     // Insert button next to submit button
-    const submitButton = submitContainer.querySelector('.ms-Button--primary');
-    if (submitButton) {
-        submitButton.insertAdjacentElement('beforebegin', aiButton);
+    const primarySubmitButton = submitContainer.querySelector('.ms-Button--primary');
+    if (primarySubmitButton) {
+        primarySubmitButton.insertAdjacentElement('beforebegin', aiButton);
     } else {
         submitContainer.appendChild(aiButton);
     }
+}
+
+// Update business justification button visibility based on API key availability
+async function updateBusinessJustificationButtonVisibility() {
+    try {
+        // Check if extension context is valid
+        if (!isExtensionContextValid()) {
+            return;
+        }
+        
+        const hasKey = await hasOpenAIKey();
+        const existingButton = document.querySelector('.ai-enhance-btn');
+        
+        // Look for Additional questions modal more reliably
+        const additionalQuestionsModal = document.querySelector('h3[title="Additional questions"]');
+        // Try multiple selectors for the textarea
+        const businessJustificationTextarea = document.querySelector('textarea[aria-labelledby*="TextFieldLabel"]') ||
+                                            document.querySelector('textarea[id*="TextField"]') ||
+                                            document.querySelector('.ms-TextField--multiline textarea');
+        
+        // Only show button if we have API key and the Additional Questions modal is open
+        if (hasKey && additionalQuestionsModal && businessJustificationTextarea && !existingButton) {
+            // Add button if we have a key, correct modal, but no button
+            addAIButtonToBusinessJustification();
+        } else if (!hasKey && existingButton) {
+            // Remove button if we have no key but button exists
+            existingButton.remove();
+        }
+    } catch (error) {
+        // Extension context issues, silently return
+        return;
+    }
+}
+
+// Start periodic checks for button visibility
+function startPeriodicVisibilityCheck() {
+    // Check chat button visibility every 5 seconds
+    setInterval(() => {
+        updateChatButtonVisibility();
+    }, 5000);
+    
+    // Check business justification button visibility more frequently when modal might be open
+    setInterval(() => {
+        const modal = document.querySelector('.ms-Modal.is-open') || 
+                     document.querySelector('[role="dialog"]');
+        if (modal && modal.textContent.includes('Additional questions')) {
+            updateBusinessJustificationButtonVisibility();
+        }
+    }, 2000);
 }
 
 // Listen for API key updates from popup
@@ -1105,19 +1206,11 @@ if (chrome?.runtime?.onMessage) {
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         try {
             if (message.type === 'API_KEY_UPDATED') {
-                // Re-check for Additional Questions modal and update AI button visibility
-                setTimeout(() => {
-                    const modal = document.querySelector('.ms-Modal-scrollableContent');
-                    if (modal && modal.textContent.includes('Additional questions')) {
-                        // Remove existing button if any
-                        const existingButton = document.querySelector('.ai-enhance-btn');
-                        if (existingButton) {
-                            existingButton.remove();
-                        }
-                        // Re-add button based on new key status
-                        addAIButtonToBusinessJustification();
-                    }
-                }, 100);
+                // Update chat button visibility immediately
+                updateChatButtonVisibility();
+                
+                // Update business justification button visibility
+                updateBusinessJustificationButtonVisibility();
             }
         } catch (error) {
             // Extension context invalidated, ignore
@@ -2151,17 +2244,17 @@ function watchForModal() {
             // Check for Additional Questions modal
             const additionalQuestionsTitle = modal.querySelector('h3[title="Additional questions"]');
             if (additionalQuestionsTitle) {
-                // Attempt to add AI button to business justification field
-                setTimeout(addAIButtonToBusinessJustification, 100);
-                setTimeout(addAIButtonToBusinessJustification, 300);
-                setTimeout(addAIButtonToBusinessJustification, 600);
+                // Update AI button visibility based on API key
+                setTimeout(updateBusinessJustificationButtonVisibility, 100);
+                setTimeout(updateBusinessJustificationButtonVisibility, 300);
+                setTimeout(updateBusinessJustificationButtonVisibility, 600);
             } else {
                 // Also check for modal content that might contain "Additional questions"
                 const hasAdditionalQuestions = modal.textContent.includes('Additional questions');
                 if (hasAdditionalQuestions) {
-                    setTimeout(addAIButtonToBusinessJustification, 100);
-                    setTimeout(addAIButtonToBusinessJustification, 300);
-                    setTimeout(addAIButtonToBusinessJustification, 600);
+                    setTimeout(updateBusinessJustificationButtonVisibility, 100);
+                    setTimeout(updateBusinessJustificationButtonVisibility, 300);
+                    setTimeout(updateBusinessJustificationButtonVisibility, 600);
                 }
             }
         }
@@ -2215,6 +2308,9 @@ function init() {
     interceptPackageClicks();
     watchForModal();
     
+    // Start periodic button visibility checks
+    startPeriodicVisibilityCheck();
+    
     // Check for existing access request panels on page load
     setTimeout(() => {
         addApproversToAccessRequestPanel();
@@ -2226,24 +2322,53 @@ function init() {
         addApproversToAccessRequestPanel();
     }, 3000);
     
-    // Add AI chat button next to help button
+    // Update AI chat button visibility based on API key
     setTimeout(() => {
-        addAIChatButton();
+        updateChatButtonVisibility();
     }, 1000);
     setTimeout(() => {
-        addAIChatButton();
+        updateChatButtonVisibility();
     }, 2000);
     setTimeout(() => {
-        addAIChatButton();
+        updateChatButtonVisibility();
     }, 5000);
     setTimeout(() => {
-        addAIChatButton();
+        updateChatButtonVisibility();
     }, 10000);
     
     // Add global function for manual testing
     window.addAIButton = addAIButtonToBusinessJustification;
     window.showAIChat = showChatModal;
     window.addAIChatButton = addAIChatButton;
+    window.updateChatButtonVisibility = updateChatButtonVisibility;
+    window.updateBusinessJustificationButtonVisibility = updateBusinessJustificationButtonVisibility;
+    window.checkAPIKey = async () => {
+        const hasKey = await hasOpenAIKey();
+        const key = await getOpenAIKey();
+        const additionalQuestionsModal = document.querySelector('h3[title="Additional questions"]');
+        const businessJustificationTextarea = document.querySelector('textarea[aria-labelledby*="TextFieldLabel"]') ||
+                                            document.querySelector('textarea[id*="TextField"]') ||
+                                            document.querySelector('.ms-TextField--multiline textarea');
+        const submitButton = document.querySelector('button[aria-label="Submit request"]');
+        
+        console.log('Has API key:', hasKey);
+        console.log('API key exists:', !!key);
+        console.log('Chat button exists:', !!document.querySelector('.ai-chat-button'));
+        console.log('Enhancement button exists:', !!document.querySelector('.ai-enhance-btn'));
+        console.log('Additional questions modal exists:', !!additionalQuestionsModal);
+        console.log('Business justification textarea exists:', !!businessJustificationTextarea);
+        console.log('Submit button exists:', !!submitButton);
+        
+        return { 
+            hasKey, 
+            keyExists: !!key, 
+            chatButton: !!document.querySelector('.ai-chat-button'), 
+            enhanceButton: !!document.querySelector('.ai-enhance-btn'),
+            modalExists: !!additionalQuestionsModal,
+            textareaExists: !!businessJustificationTextarea,
+            submitButtonExists: !!submitButton
+        };
+    };
 }
 
 if (document.readyState === 'loading') {
