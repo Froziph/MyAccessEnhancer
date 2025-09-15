@@ -55,6 +55,45 @@
                 </div>
             </div>
 
+            <!-- Prompt Customization Section -->
+            <div class="setting-group">
+                <div class="setting-label">
+                    Prompt Customization
+                    <button id="toggle-prompts" class="toggle-btn" type="button">▼</button>
+                </div>
+                <div id="prompts-section" class="prompts-section hidden">
+                    <div class="prompt-group">
+                        <label for="business-justification-prompt" class="prompt-label">
+                            Business Justification Enhancement Prompt
+                        </label>
+                        <textarea
+                            id="business-justification-prompt"
+                            class="prompt-textarea"
+                            placeholder="Leave empty to use default prompt"
+                            rows="6"
+                        ></textarea>
+                        <button id="reset-business-prompt" class="btn-reset" type="button">Reset to Default</button>
+                    </div>
+
+                    <div class="prompt-group">
+                        <label for="assistant-prompt" class="prompt-label">
+                            AI Chat Assistant System Prompt
+                        </label>
+                        <textarea
+                            id="assistant-prompt"
+                            class="prompt-textarea"
+                            placeholder="Leave empty to use default prompt"
+                            rows="6"
+                        ></textarea>
+                        <button id="reset-assistant-prompt" class="btn-reset" type="button">Reset to Default</button>
+                    </div>
+
+                    <div class="setting-description">
+                        Customize the AI prompts used for different features. Leave empty to use the optimized default prompts. Click "Reset to Default" to remove custom prompts.
+                    </div>
+                </div>
+            </div>
+
             <div class="status-group">
                 <div id="status-indicator" class="status-indicator">
                     <div class="status-dot"></div>

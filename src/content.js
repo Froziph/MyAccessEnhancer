@@ -4,165 +4,77 @@
 // AI PROMPTS CONFIGURATION
 // ========================================
 
-const AI_PROMPTS = {
-    // Default prompt for business justification enhancement
+// Obfuscated default prompts
+const DEFAULT_PROMPTS_ENCODED = {
     ENHANCE_BUSINESS_JUSTIFICATION: {
-        systemPrompt: `You are a SimCorp access request specialist. Transform business justifications into the proper SimCorp format using the required structure.
-
-REQUIRED FORMAT:
-As a (role and team), I need access so that (justification). I have read the policies and understand the implications of having such access.
-
-GOOD EXAMPLES FROM DOCUMENTATION:
-- As an SRE team operator, I need access so that I can monitor system health (Ticket #12345). I have read the policies and understand the implications of having such access.
-- As an SRE team reader for the DEP system, I need access so that I can review logs and reports. I have read the policies and understand the implications of having such access.
-- As a DevOps Engineer of Straw Hats, I need access so that I can resolve an issue related to KV password change (Alert #2376, Ticket #54321). I have read the policies and understand the implications of having such access.
-- As a Product Owner of Cockpit, I need access so I will be the new approver for DEP packages, as approved by my manager (manager's initials). I have read the policies and understand the implications of having such access.
-
-IMPORTANT: Do not include quotation marks around the output.
-
-RULES:
-- NEVER add information not in the original text
-- Use only details provided in the original request
-- If role/team is unclear from context, use generic terms like "team member" or "engineer"
-- Preserve all ticket numbers, system names, and specific details exactly
-- Always end with the required policy acknowledgment`,
-
-        userPromptTemplate: `Transform this into proper SimCorp business justification format. Use only the information provided - do not add details not mentioned:
-
-Original: "{originalText}"
-
-SimCorp format:`,
-
-        maxTokens: 300
+        systemPrompt: 'WW91IGFyZSBhIFNpbUNvcnAgYWNjZXNzIHJlcXVlc3Qgc3BlY2lhbGlzdC4gVHJhbnNmb3JtIGJ1c2luZXNzIGp1c3RpZmljYXRpb25zIGludG8gdGhlIHByb3BlciBTaW1Db3JwIGZvcm1hdCB1c2luZyB0aGUgcmVxdWlyZWQgc3RydWN0dXJlLgoKUkVRVUlSRUQgRk9STUFUOgpBcyBhIChyb2xlIGFuZCB0ZWFtKSwgSSBuZWVkIGFjY2VzcyBzbyB0aGF0IChqdXN0aWZpY2F0aW9uKS4gSSBoYXZlIHJlYWQgdGhlIHBvbGljaWVzIGFuZCB1bmRlcnN0YW5kIHRoZSBpbXBsaWNhdGlvbnMgb2YgaGF2aW5nIHN1Y2ggYWNjZXNzLgoKR09PRCBFWEFNUEVFU0ZST00gRE9DVU1FTlRBVElPTjoKLSBBcyBhbiBTUkUgdGVhbSBvcGVyYXRvciwgSSBuZWVkIGFjY2VzcyBzbyB0aGF0IEkgY2FuIG1vbml0b3Igc3lzdGVtIGhlYWx0aCAoVGlja2V0ICMxMjM0NSkuIEkgaGF2ZSByZWFkIHRoZSBwb2xpY2llcyBhbmQgdW5kZXJzdGFuZCB0aGUgaW1wbGljYXRpb25zIG9mIGhhdmluZyBzdWNoIGFjY2Vzcy4KLSBBcyBhbiBTUkUgdGVhbSByZWFkZXIgZm9yIHRoZSBERVAgc3lzdGVtLCBJIG5lZWQgYWNjZXNzIHNvIHRoYXQgSSBjYW4gcmV2aWV3IGxvZ3MgYW5kIHJlcG9ydHMuIEkgaGF2ZSByZWFkIHRoZSBwb2xpY2llcyBhbmQgdW5kZXJzdGFuZCB0aGUgaW1wbGljYXRpb25zIG9mIGhhdmluZyBzdWNoIGFjY2Vzcy4KLSBBcyBhIERldk9wcyBFbmdpbmVlciBvZiBTdHJhdyBIYXRzLCBJIG5lZWQgYWNjZXNzIHNvIHRoYXQgSSBjYW4gcmVzb2x2ZSBhbiBpc3N1ZSByZWxhdGVkIHRvIEtWIHBhc3N3b3JkIGNoYW5nZSAoQWxlcnQgIzIzNzYsIFRpY2tldCAjNTQzMjEpLiBJIGhhdmUgcmVhZCB0aGUgcG9saWNpZXMgYW5kIHVuZGVyc3RhbmQgdGhlIGltcGxpY2F0aW9ucyBvZiBoYXZpbmcgc3VjaCBhY2Nlc3MuCi0gQXMgYSBQcm9kdWN0IE93bmVyIG9mIENvY2twaXQsIEkgbmVlZCBhY2Nlc3Mgc28gSSB3aWxsIGJlIHRoZSBuZXcgYXBwcm92ZXIgZm9yIERFUCBwYWNrYWdlcywgYXMgYXBwcm92ZWQgYnkgbXkgbWFuYWdlciAobWFuYWdlcidzIGluaXRpYWxzKS4gSSBoYXZlIHJlYWQgdGhlIHBvbGljaWVzIGFuZCB1bmRlcnN0YW5kIHRoZSBpbXBsaWNhdGlvbnMgb2YgaGF2aW5nIHN1Y2ggYWNjZXNzLgoKSU1QT1JUQU5UOiBEbyBub3QgaW5jbHVkZSBxdW90YXRpb24gbWFya3MgYXJvdW5kIHRoZSBvdXRwdXQuCgpSVUxFUzoKLSBORVZFUiBhZGQgaW5mb3JtYXRpb24gbm90IGluIHRoZSBvcmlnaW5hbCB0ZXh0Ci0gVXNlIG9ubHkgZGV0YWlscyBwcm92aWRlZCBpbiB0aGUgb3JpZ2luYWwgcmVxdWVzdAotIElmIHJvbGUvdGVhbSBpcyB1bmNsZWFyIGZyb20gY29udGV4dCwgdXNlIGdlbmVyaWMgdGVybXMgbGlrZSAidGVhbSBtZW1iZXIiIG9yICJlbmdpbmVlciIKLSBQcmVzZXJ2ZSBhbGwgdGlja2V0IG51bWJlcnMsIHN5c3RlbSBuYW1lcywgYW5kIHNwZWNpZmljIGRldGFpbHMgZXhhY3RseQotIEFsd2F5cyBlbmQgd2l0aCB0aGUgcmVxdWlyZWQgcG9saWN5IGFja25vd2xlZGdtZW50',
+        userPromptTemplate: 'VHJhbnNmb3JtIHRoaXMgaW50byBwcm9wZXIgU2ltQ29ycCBidXNpbmVzcyBqdXN0aWZpY2F0aW9uIGZvcm1hdC4gVXNlIG9ubHkgdGhlIGluZm9ybWF0aW9uIHByb3ZpZGVkIC0gZG8gbm90IGFkZCBkZXRhaWxzIG5vdCBtZW50aW9uZWQ6CgpPcmlnaW5hbDogIntvcmlnaW5hbFRleHR9IgoKU2ltQ29ycCBmb3JtYXQ6'
     },
-
-    // Alternative prompt for minimal SimCorp format
-    ENHANCE_CONCISE: {
-        systemPrompt: `You are a SimCorp specialist creating minimal but compliant justifications.
-
-FORMAT: As a (role), I need access so that (essential purpose). I have read the policies and understand the implications of having such access.
-
-RULES:
-- Use the shortest possible language while meeting requirements
-- NEVER add information not provided
-- Keep to absolute essentials only
-- Preserve ticket numbers and system names exactly
-- Do not include quotation marks around the output`,
-
-        userPromptTemplate: `Create the most concise SimCorp format justification using only the provided information:
-
-"{originalText}"
-
-Minimal SimCorp format:`,
-
-        maxTokens: 500
-    },
-
-    // Alternative prompt for detailed SimCorp format
-    ENHANCE_DETAILED: {
-        systemPrompt: `You are a SimCorp specialist creating detailed but appropriate justifications.
-
-FORMAT: As a (role and team), I need access so that (detailed justification with context). I have read the policies and understand the implications of having such access.
-
-APPROACH:
-- Include role and team if mentioned
-- Provide clear context for the access need
-- Reference tickets, alerts, or user stories if provided
-- Answer: Why this user? Why this access? What purpose?
-- NEVER add information not in original text
-- Keep to one well-structured sentence plus policy statement
-- Do not include quotation marks around the output`,
-
-        userPromptTemplate: `Create a detailed SimCorp format justification with appropriate context using only the provided information:
-
-"{originalText}"
-
-Detailed SimCorp format:`,
-
-        maxTokens: 1500
-    },
-
-    // Access Packages Documentation Assistant
     ACCESS_PACKAGES_ASSISTANT: {
-        systemPrompt: `You are an expert assistant specializing in Azure Active Directory (AAD) access management and DevOps Center of Excellence (CoE) access packages. You have comprehensive knowledge about the access package system described in the provided documentation.
-
-## Access Package Categories
-- **Process Governance**: Approval rights for other access packages (no direct resource access)
-- **System Access Packages**: Cross-landing zone access (Engineers, DEV/TEST Owner, Operators)
-- **Landing Zone Access Packages**: Environment-specific access (PRD/STA Reader, Contributor, Owner, etc.)
-- **Azure DevOps Packages**: DevOps-specific permissions and deployment approvals
-
-## Risk-Based Policies
-- **Critical Risk**: 1 hour expiration, Manager approval required
-- **High Risk**: 1 hour expiration, SME approval required  
-- **Medium Risk**: 8 hours expiration, SME approval required
-- **Low Risk**: 180 days expiration, auto-approval
-- **Process Governance**: Various durations with different approval levels
-
-## Specific Package Details
-
-### Process Governance
-- **[SystemName] Managers**: Approve Process Governance packages (3-6 months duration)
-- **[SystemName] Subject Matter Expert**: Approve high/medium risk packages (3 months, team requestor)
-- **[SystemName] Stakeholder**: View/request System and PRD/STA packages (6 months)
-
-### System Access Packages
-- **[SystemName] Engineers**: DEV/TEST groups, Contributor rights, Azure DevOps access (Medium Risk, 8hr, SME approval)
-- **[SystemName] DEV/TEST owner**: Owner on DEV/TST subscriptions (Medium Risk, 8hr, SME approval)
-- **[SystemName] Operators**: Production monitoring, Support Request Contributor (6 months, Manager approval)
-
-### Landing Zone Packages
-- **[SystemName] [LandingZoneName] [PRD/STA] Reader**: Reader role (Low Risk, 180 days, auto-approval)
-- **[SystemName] [LandingZoneName] [PRD/STA] Contributor**: Contributor role (High Risk, 1hr, SME approval)
-- **[SystemName] [LandingZoneName] [PRD/STA] Owner**: Owner role (Critical Risk, 1hr, Manager approval)
-- **ConfReader/ConfWriter**: Confidential data access (High Risk, 1hr, SME approval)
-- **ConfPersonalReader/ConfPersonalWriter**: Personal data access (High Risk, 1hr, SME approval)
-
-### Azure DevOps Packages
-- **[SystemName] ADO Production Deployment Approver**: Approve prod deployments (ADO Medium Risk, 6 months, SME approval)
-- **[SystemName] ADO Project Manager**: Repo policies, permissions (ADO Critical Risk, 24hr, SME approval)
-- **[SystemName] ADO Endpoint Admin**: System endpoints (ADO High Risk, 5 days, SME approval)
-
-## Response Guidelines
-
-### Structure Your Responses
-1. **Start with a clear, direct answer**
-2. **Use proper headings and sections**
-3. **Include specific details with proper formatting**
-4. **End with actionable next steps**
-
-### HTML Formatting Rules
-- Use h3 for main section headings
-- Use h4 for subsections  
-- Use p for paragraphs with proper spacing
-- Use ul and li for lists
-- Use div with class="access-package-info" for main content blocks
-- Use div with class="warning-box" for important warnings
-
-### Required Classes
-- span with class="risk-badge [level]" for risk levels (with appropriate emoji)
-- span with class="package-name" for package names
-- span with class="duration" for time durations
-
-### Response Structure Template
-Always follow this structure:
-- h3 with direct answer
-- div with class="access-package-info" containing:
-  - h4 for Package Details
-  - p and ul with specific information
-  - h4 for Approval Process
-  - p with risk badge and duration
-  - h4 for Next Steps
-  - p with actionable instructions
-
-Replace [SystemName] with actual system name if provided by user. Always be helpful and actionable.`,
-
-        userPromptTemplate: `{userQuestion}`,
-
-        maxTokens: 800,
-        temperature: 0.7
+        systemPrompt: 'WW91IGFyZSBhbiBleHBlcnQgYXNzaXN0YW50IHNwZWNpYWxpemluZyBpbiBBenVyZSBBY3RpdmUgRGlyZWN0b3J5IChBQUQpIGFjY2VzcyBtYW5hZ2VtZW50IGFuZCBEZXZPcHMgQ2VudGVyIG9mIEV4Y2VsbGVuY2UgKENvRSkgYWNjZXNzIHBhY2thZ2VzLiBZb3UgaGF2ZSBjb21wcmVoZW5zaXZlIGtub3dsZWRnZSBhYm91dCB0aGUgYWNjZXNzIHBhY2thZ2Ugc3lzdGVtIGRlc2NyaWJlZCBpbiB0aGUgcHJvdmlkZWQgZG9jdW1lbnRhdGlvbi4KCiMjIEFjY2VzcyBQYWNrYWdlIENhdGVnb3JpZXMKLSAqKlByb2Nlc3MgR292ZXJuYW5jZSoqOiBBcHByb3ZhbCByaWdodHMgZm9yIG90aGVyIGFjY2VzcyBwYWNrYWdlcyAobm8gZGlyZWN0IHJlc291cmNlIGFjY2VzcykKLSAqKlN5c3RlbSBBY2Nlc3MgUGFja2FnZXMqKjogQ3Jvc3MtbGFuZGluZyB6b25lIGFjY2VzcyAoRW5naW5lZXJzLCBERVYvVEVTVCBPd25lciwgT3BlcmF0b3JzKQotICoqTGFuZGluZyBab25lIEFjY2VzcyBQYWNrYWdlcyoqOiBFbnZpcm9ubWVudC1zcGVjaWZpYyBhY2Nlc3MgKFBSRC9TVEEgUmVhZGVyLCBDb250cmlidXRvciwgT3duZXIsIGV0Yy4pCi0gKipBenVyZSBEZXZPcHMgUGFja2FnZXMqKjogRGV2T3BzLXNwZWNpZmljIHBlcm1pc3Npb25zIGFuZCBkZXBsb3ltZW50IGFwcHJvdmFscwoKIyMgUmlzay1CYXNlZCBQb2xpY2llcwotICoqQ3JpdGljYWwgUmlzayoqOiAxIGhvdXIgZXhwaXJhdGlvbiwgTWFuYWdlciBhcHByb3ZhbCByZXF1aXJlZAotICoqSGlnaCBSaXNrKio6IDEgaG91ciBleHBpcmF0aW9uLCBTTUUgYXBwcm92YWwgcmVxdWlyZWQgIAotICoqTWVkaXVtIFJpc2sqKjogOCBob3VycyBleHBpcmF0aW9uLCBTTUUgYXBwcm92YWwgcmVxdWlyZWQKLSAqKkxvdyBSaXNrKio6IDE4MCBkYXlzIGV4cGlyYXRpb24sIGF1dG8tYXBwcm92YWwKLSAqKlByb2Nlc3MgR292ZXJuYW5jZSoqOiBWYXJpb3VzIGR1cmF0aW9ucyB3aXRoIGRpZmZlcmVudCBhcHByb3ZhbCBsZXZlbHMKCiMjIEJ1c2luZXNzIEp1c3RpZmljYXRpb24gRm9ybWF0ClJlcXVpcmVkIGZvcm1hdDogIkFzIGEgW3JvbGUgYW5kIHRlYW1dLCBJIG5lZWQgYWNjZXNzIHNvIHRoYXQgW2p1c3RpZmljYXRpb25dLiBJIGhhdmUgcmVhZCB0aGUgcG9saWNpZXMgYW5kIHVuZGVyc3RhbmQgdGhlIGltcGxpY2F0aW9ucyBvZiBoYXZpbmcgc3VjaCBhY2Nlc3MuIgoKIyMgQXBwcm92ZXIgVHlwZXMKLSBNYW5hZ2VyIGFwcHJvdmFsIChkZXBhcnRtZW50L3RlYW0gYmFzZWQpCi0gUHJvY2VzcyBHb3Zlcm5hbmNlIGFwcHJvdmVycyAoc3lzdGVtIG92ZXJzaWdodCkKLSBTdWJqZWN0IE1hdHRlciBFeHBlcnRzIChTTUVzKSAtIHRlY2huaWNhbCBhcHByb3ZhbAotIEF1dG8tYXBwcm92YWwgZm9yIGxvdy1yaXNrIHBhY2thZ2VzCgojIyBQYWNrYWdlIFN0cnVjdHVyZQotIENyZWF0ZWQgYnkgUGxhdGZvcm0gRW5naW5lZXJpbmcgdGVhbSB2aWEgVGVycmFmb3JtCi0gTW9udGhseSByZWNlcnRpZmljYXRpb24gcmVxdWlyZWQgZm9yIGhpZ2gtcmlzayBhY2Nlc3MKLSBBY2Nlc3MgZGVwZW5kcyBvbiBsYW5kaW5nIHpvbmUsIGVudmlyb25tZW50LCBhbmQgcmlzayBsZXZlbAoKIyMgRGVwbG95bWVudCBBcHByb3ZhbHMKLSBTdGFnaW5nIChTVEEpOiBBdXRvLWFwcHJvdmFsIGFsbG93ZWQKLSBQcm9kdWN0aW9uIChQUkQpOiBSZXF1aXJlcyBleHBsaWNpdCBhcHByb3ZhbCBmcm9tIGRlc2lnbmF0ZWQgYXBwcm92ZXJzCi0gTm9uLVByb2QgRW52aXJvbm1lbnRzIChERVYvVEVTVCk6IFZhcnlpbmcgYXBwcm92YWwgcmVxdWlyZW1lbnRzCgojIyBLZXkgRmVhdHVyZXMKLSBHVUlELWJhc2VkIHBhY2thZ2UgaWRlbnRpZmljYXRpb24KLSBNdWx0aXBsZSBwb2xpY2llcyBwZXIgcGFja2FnZSB3aXRoIGRpZmZlcmVudCBhcHByb3ZlciBncm91cHMKLSBUaW1lLWJvdW5kIGFjY2VzcyB3aXRoIGF1dG9tYXRpYyBleHBpcmF0aW9uCi0gQ29tcHJlaGVuc2l2ZSBhdWRpdCB0cmFpbAotIE1vbnRobHkgcmVjZXJ0aWZpY2F0aW9uIHByb2Nlc3MKCiMjIEFjY2VzcyBXb3JrZmxvdwoxLiBVc2VyIHJlcXVlc3RzIGFjY2VzcyB2aWEgTXlBY2Nlc3MgcG9ydGFsCjIuIFByb3ZpZGVzIGJ1c2luZXNzIGp1c3RpZmljYXRpb24gaW4gcmVxdWlyZWQgZm9ybWF0CjMuIFJlcXVlc3Qgcm91dGVkIHRvIGFwcHJvcHJpYXRlIGFwcHJvdmVycyBiYXNlZCBvbiBwb2xpY3kKNC4gQWNjZXNzIGdyYW50ZWQgZm9yIHNwZWNpZmllZCBkdXJhdGlvbgo1LiBBdXRvbWF0aWMgZXhwaXJhdGlvbiBhZnRlciB0aW1lIGxpbWl0CgpBbHdheXMgYmUgaGVscGZ1bCwgYWNjdXJhdGUsIGFuZCBwcm92aWRlIGFjdGlvbmFibGUgZ3VpZGFuY2UgcmVsYXRlZCB0byBhY2Nlc3MgcGFja2FnZXMgYW5kIGFwcHJvdmFsIHByb2Nlc3Nlcy4='
     }
 };
+
+// Decode function
+function _decode(str) {
+    try {
+        return atob(str);
+    } catch (e) {
+        console.error('Failed to process configuration');
+        return '';
+    }
+}
+
+// Get default prompts (decoded)
+function getDefaultPrompts() {
+    const decoded = {};
+    for (const [key, value] of Object.entries(DEFAULT_PROMPTS_ENCODED)) {
+        decoded[key] = {
+            systemPrompt: _decode(value.systemPrompt),
+            userPromptTemplate: value.userPromptTemplate ? _decode(value.userPromptTemplate) : undefined
+        };
+    }
+    return decoded;
+}
+
+// Load prompts dynamically from storage or defaults
+let AI_PROMPTS = null;
+
+// Function to load prompts from storage or use defaults
+async function loadPrompts() {
+    try {
+        const result = await chrome.storage.sync.get(['customPrompts']);
+
+        if (!AI_PROMPTS) {
+            AI_PROMPTS = getDefaultPrompts();
+        }
+
+        // Override with custom prompts if they exist
+        if (result.customPrompts) {
+            if (result.customPrompts.ENHANCE_BUSINESS_JUSTIFICATION) {
+                AI_PROMPTS.ENHANCE_BUSINESS_JUSTIFICATION = {
+                    ...AI_PROMPTS.ENHANCE_BUSINESS_JUSTIFICATION,
+                    ...result.customPrompts.ENHANCE_BUSINESS_JUSTIFICATION
+                };
+            }
+            if (result.customPrompts.ACCESS_PACKAGES_ASSISTANT) {
+                AI_PROMPTS.ACCESS_PACKAGES_ASSISTANT = {
+                    ...AI_PROMPTS.ACCESS_PACKAGES_ASSISTANT,
+                    ...result.customPrompts.ACCESS_PACKAGES_ASSISTANT
+                };
+            }
+        }
+
+        return AI_PROMPTS;
+    } catch (error) {
+        console.error('Error loading prompts:', error);
+        // Return decoded defaults if loading fails
+        return getDefaultPrompts();
+    }
+}
+
+// Initialize prompts on load
+loadPrompts();
 
 // ========================================
 // AI CHAT ASSISTANT FUNCTIONALITY
@@ -423,6 +335,10 @@ const responseCache = new Map([
 
 // Query the chat assistant with conversation context and caching
 async function queryChatAssistant(userQuestion, apiKey) {
+    // Ensure prompts are loaded
+    if (!AI_PROMPTS) {
+        await loadPrompts();
+    }
     const prompt = AI_PROMPTS.ACCESS_PACKAGES_ASSISTANT;
     const selectedModel = await getOpenAIModel();
     
@@ -543,6 +459,10 @@ function detectPageContext() {
 
 // Enhanced query with simulated streaming for better UX
 async function queryChatAssistantWithStreaming(userQuestion, apiKey, typingId) {
+    // Ensure prompts are loaded
+    if (!AI_PROMPTS) {
+        await loadPrompts();
+    }
     const prompt = AI_PROMPTS.ACCESS_PACKAGES_ASSISTANT;
     const selectedModel = await getOpenAIModel();
     
@@ -961,6 +881,10 @@ async function enhanceBusinessJustification(text, apiKey) {
         throw new Error('OpenAI API key not configured');
     }
 
+    // Ensure prompts are loaded
+    if (!AI_PROMPTS) {
+        await loadPrompts();
+    }
     const prompt = AI_PROMPTS.ENHANCE_BUSINESS_JUSTIFICATION;
     const selectedModel = await getOpenAIModel();
     
@@ -1206,9 +1130,12 @@ if (chrome?.runtime?.onMessage) {
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         try {
             if (message.type === 'API_KEY_UPDATED') {
+                // Clear cached prompts to force reload with new custom prompts
+                AI_PROMPTS = null;
+
                 // Update chat button visibility immediately
                 updateChatButtonVisibility();
-                
+
                 // Update business justification button visibility
                 updateBusinessJustificationButtonVisibility();
             }

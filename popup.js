@@ -8,14 +8,48 @@ document.addEventListener('DOMContentLoaded', async function() {
     const statusText = document.getElementById('status-text');
     const message = document.getElementById('message');
 
+    // Prompt customization elements
+    const togglePromptsBtn = document.getElementById('toggle-prompts');
+    const promptsSection = document.getElementById('prompts-section');
+    const businessPromptTextarea = document.getElementById('business-justification-prompt');
+    const assistantPromptTextarea = document.getElementById('assistant-prompt');
+    const resetBusinessPromptBtn = document.getElementById('reset-business-prompt');
+    const resetAssistantPromptBtn = document.getElementById('reset-assistant-prompt');
+
     // Load existing API key
     await loadSettings();
+
+    // Toggle prompts section
+    togglePromptsBtn.addEventListener('click', function() {
+        const isHidden = promptsSection.classList.contains('hidden');
+        if (isHidden) {
+            promptsSection.classList.remove('hidden');
+            togglePromptsBtn.classList.add('expanded');
+            togglePromptsBtn.textContent = '▲';
+        } else {
+            promptsSection.classList.add('hidden');
+            togglePromptsBtn.classList.remove('expanded');
+            togglePromptsBtn.textContent = '▼';
+        }
+    });
+
+    // Reset business justification prompt
+    resetBusinessPromptBtn.addEventListener('click', function() {
+        businessPromptTextarea.value = '';
+        showMessage('Business justification prompt reset to default', 'info');
+    });
+
+    // Reset assistant prompt
+    resetAssistantPromptBtn.addEventListener('click', function() {
+        assistantPromptTextarea.value = '';
+        showMessage('Assistant prompt reset to default', 'info');
+    });
 
     // Save settings
     saveBtn.addEventListener('click', async function() {
         const apiKey = apiKeyInput.value.trim();
         const selectedModel = modelSelect.value;
-        
+
         if (!apiKey) {
             showMessage('Please enter an API key', 'error');
             return;
@@ -26,14 +60,39 @@ document.addEventListener('DOMContentLoaded', async function() {
             return;
         }
 
+        // Prepare custom prompts object
+        const customPrompts = {};
+
+        if (businessPromptTextarea.value.trim()) {
+            customPrompts.ENHANCE_BUSINESS_JUSTIFICATION = {
+                systemPrompt: businessPromptTextarea.value.trim()
+            };
+        }
+
+        if (assistantPromptTextarea.value.trim()) {
+            customPrompts.ACCESS_PACKAGES_ASSISTANT = {
+                systemPrompt: assistantPromptTextarea.value.trim()
+            };
+        }
+
         try {
-            await chrome.storage.sync.set({ 
+            const dataToSave = {
                 'openai_api_key': apiKey,
                 'openai_model': selectedModel
-            });
+            };
+
+            // Only save custom prompts if they exist
+            if (Object.keys(customPrompts).length > 0) {
+                dataToSave['customPrompts'] = customPrompts;
+            } else {
+                // Clear custom prompts if both are empty
+                await chrome.storage.sync.remove('customPrompts');
+            }
+
+            await chrome.storage.sync.set(dataToSave);
             await updateStatus();
             showMessage('Settings saved successfully!', 'success');
-            
+
             // Notify content scripts about the key update
             notifyContentScripts();
         } catch (error) {
@@ -83,7 +142,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Load settings from storage
     async function loadSettings() {
         try {
-            const result = await chrome.storage.sync.get(['openai_api_key', 'openai_model']);
+            const result = await chrome.storage.sync.get(['openai_api_key', 'openai_model', 'customPrompts']);
             if (result.openai_api_key) {
                 apiKeyInput.value = result.openai_api_key;
             }
@@ -93,6 +152,19 @@ document.addEventListener('DOMContentLoaded', async function() {
                 // Default to gpt-4o-mini if no model is saved
                 modelSelect.value = 'gpt-4o-mini';
             }
+
+            // Load custom prompts if they exist
+            if (result.customPrompts) {
+                if (result.customPrompts.ENHANCE_BUSINESS_JUSTIFICATION &&
+                    result.customPrompts.ENHANCE_BUSINESS_JUSTIFICATION.systemPrompt) {
+                    businessPromptTextarea.value = result.customPrompts.ENHANCE_BUSINESS_JUSTIFICATION.systemPrompt;
+                }
+                if (result.customPrompts.ACCESS_PACKAGES_ASSISTANT &&
+                    result.customPrompts.ACCESS_PACKAGES_ASSISTANT.systemPrompt) {
+                    assistantPromptTextarea.value = result.customPrompts.ACCESS_PACKAGES_ASSISTANT.systemPrompt;
+                }
+            }
+
             await updateStatus();
         } catch (error) {
             showMessage('Failed to load settings: ' + error.message, 'error');
