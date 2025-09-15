@@ -192,6 +192,7 @@ body {
     display: flex;
     gap: 8px;
     margin-top: 4px;
+    margin-bottom: 2px;
 }
 
 .btn {
@@ -267,8 +268,6 @@ body {
     margin-top: 12px;
     padding-top: 12px;
     border-top: 1px solid #e1dfdd;
-    max-height: 400px;
-    overflow-y: auto;
     transition: all 0.3s ease;
 }
 
@@ -277,7 +276,7 @@ body {
 }
 
 .prompt-group {
-    margin-bottom: 16px;
+    margin-bottom: 12px;
 }
 
 .prompt-label {
@@ -290,15 +289,19 @@ body {
 
 .prompt-textarea {
     width: 100%;
-    min-height: 100px;
+    min-height: 80px;
+    max-height: 120px;
     padding: 8px;
     border: 1px solid #e1dfdd;
     border-radius: 4px;
     font-size: 12px;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    resize: vertical;
+    resize: none;
     background-color: #faf9f8;
     transition: border-color 0.15s ease-in-out;
+    box-sizing: border-box;
+    word-wrap: break-word;
+    overflow-y: auto;
 }
 
 .prompt-textarea:focus {
@@ -347,8 +350,8 @@ body {
 }
 
 .footer {
-    margin-top: 8px;
-    padding-top: 8px;
+    margin-top: 0px;
+    padding-top: 2px;
     border-top: 1px solid #edebe9;
 }
 

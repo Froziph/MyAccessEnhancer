@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "MyAccess Enhanced - GUID Lookup & Approvers",
-  "version": "1.0",
-  "description": "Enhance Microsoft MyAccess with package approver lookup, detailed approver information, and group member visibility.",
+  "name": "MyAccess Enhanced - Approver Insights",
+  "version": "1.1",
+  "description": "Instantly see who can approve and request access packages. Get approver details directly in MyAccess.",
   "author": "MyAccess Enhanced Team",
-  "homepage_url": "https://github.com/Froziph/MyAccessEnhancer",
+  "homepage_url": "https://my-access-enhancer.vercel.app/",
   
   "icons": {
     "16": "icons/icon-16.png",

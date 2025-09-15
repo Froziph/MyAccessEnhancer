@@ -1,20 +1,20 @@
 # Chrome Web Store Listing Information
 
 ## Extension Name
-MyAccess Enhanced - GUID Lookup & Approvers
+MyAccess Enhanced - Approver Insights
 
 ## Short Description (132 characters max)
-Enhance Microsoft MyAccess with package GUID lookup, detailed approver information, and group member visibility.
+Instantly see who can approve and request access packages. Get approver details and workflow insights directly in MyAccess.
 
 ## Detailed Description
-Transform your Microsoft MyAccess experience with this powerful enhancement extension that provides comprehensive package information and streamlined approval workflows.
+Transform your Microsoft MyAccess experience with this powerful enhancement extension that eliminates hunting through Azure Portal for approver information.
 
 **🔍 Key Features:**
-- **GUID Lookup**: Instantly retrieve package GUIDs and metadata using the elm.iga.azure.com API
-- **Enhanced Approvers Tab**: View detailed approver information with clean, organized display
-- **Group Member Visibility**: See who's in approver groups with job titles and departments
-- **Seamless Integration**: Automatically adds an "Approvers" tab to package detail modals
-- **Professional UI**: Clean, Microsoft-style interface that blends naturally with MyAccess
+- **Instant Approver Insights**: See who can approve access packages directly in MyAccess
+- **Requester Information**: View who can request each access package
+- **Group Member Details**: Complete member lists with roles and contact information
+- **Enhanced Approval Tab**: Clean, organized display integrated into package detail modals
+- **Workflow Acceleration**: Get all approval information without leaving MyAccess
 
 **🛡️ Privacy & Security:**
 - Uses your existing Microsoft authentication tokens
@@ -53,7 +53,7 @@ English
 microsoft, myaccess, identity, access management, approvers, guid, enterprise, productivity, security, administration
 
 ## Website
-https://github.com/Froziph/MyAccessEnhancer
+https://my-access-enhancer.vercel.app/
 
 ## Support URL
 https://github.com/Froziph/MyAccessEnhancer/issues
